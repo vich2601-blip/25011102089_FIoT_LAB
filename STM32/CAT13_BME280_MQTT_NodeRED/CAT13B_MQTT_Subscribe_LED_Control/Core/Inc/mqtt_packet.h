@@ -75,6 +75,7 @@ typedef struct
   /* result of the last completed packet */
   uint8_t  code;
   uint8_t  qos;              /* PUBLISH: QoS from the fixed header */
+  uint8_t  session_present;  /* CONNACK: Session Present flag      */
   uint16_t id;
   const char    *topic;        /* NUL-terminated copy inside topic_buf */
   const uint8_t *payload;      /* NUL-terminated copy inside payload_buf */

@@ -45,6 +45,7 @@ static volatile bool    tcp_connected, mqtt_connected;
 /* ---- MQTT ---- */
 static mqtt_parser_t parser;
 static int16_t  connack_code = -1;             /* -1 = none received yet */
+static uint8_t  connack_session_present;
 static int16_t  suback_code  = -1;
 static uint16_t suback_id;
 static int32_t  unsuback_id  = -1;            /* -1 = none received yet */
@@ -85,6 +86,7 @@ static void on_mqtt_event(mqtt_event_t ev)
   switch (ev)
   {
     case MQTT_EVT_CONNACK:
+      connack_session_present = parser.session_present;
       connack_code = parser.code;
       mqtt_connected = (parser.code == 0U);
       break;
@@ -160,6 +162,7 @@ static void check_overflow(void)
   ipd_left = 0;
   mqtt_parser_init(&parser);
   mqtt_connected = false;
+  tcp_connected = false;            /* force a full TCP + MQTT reconnect, not just a new CONNECT */
 }
 
 static void esp_pump(void)
@@ -211,17 +214,22 @@ static bool wait_until(volatile uint8_t *flag, volatile uint8_t *fail, uint32_t 
   return false;
 }
 
-static void esp_write(const uint8_t *d, uint16_t n)
+static uint32_t tx_errors;
+
+static bool esp_write(const uint8_t *d, uint16_t n)
 {
-  HAL_UART_Transmit(esp_uart, (uint8_t *)d, n, 1000);   /* RX interrupt keeps running meanwhile */
+  if (HAL_UART_Transmit(esp_uart, (uint8_t *)d, n, 1000) == HAL_OK)   /* RX interrupt keeps running */
+    return true;
+  tx_errors++;
+  return false;
 }
 
 static funcState_t at_cmd(const char *cmd, uint32_t timeout_ms)
 {
   esp_pump();
   got_ok = 0; got_error = 0;
-  esp_write((const uint8_t *)cmd, (uint16_t)strlen(cmd));
-  esp_write((const uint8_t *)"\r\n", 2);
+  if (!esp_write((const uint8_t *)cmd, (uint16_t)strlen(cmd)) || !esp_write((const uint8_t *)"\r\n", 2))
+    return funcErr;
   return wait_until(&got_ok, &got_error, timeout_ms) ? funcOk : funcErr;
 }
 
@@ -231,6 +239,7 @@ static funcState_t at_cmd(const char *cmd, uint32_t timeout_ms)
 funcState_t ESP8266_InitPtr(espMode_t mode, UART_HandleTypeDef *huart)
 {
   char cmd[24];
+  if (huart == NULL) return funcErr;
   esp_uart = huart;
   ring_head = ring_tail = 0; line_len = 0; ipd_left = 0;
   mqtt_parser_init(&parser);
@@ -257,6 +266,7 @@ funcState_t ESP8266_Reset(void)
 funcState_t ESP8266_wifiConnect(char *SSID, char *Password)
 {
   char cmd[100];
+  if (SSID == NULL || Password == NULL) return funcErr;
   at_cmd("AT+CWQAP", T_CMD_MS);                       /* leave any previous AP */
   if (snprintf(cmd, sizeof(cmd), "AT+CWJAP=\"%s\",\"%s\"", SSID, Password) >= (int)sizeof(cmd))
     return funcErr;
@@ -268,6 +278,7 @@ funcState_t ESP8266_wifiConnect(char *SSID, char *Password)
 funcState_t ESP8266_portConnect(char *type, char *remoteIP, char *remotePort)
 {
   char cmd[100];
+  if (type == NULL || remoteIP == NULL || remotePort == NULL) return funcErr;
   at_cmd("AT+CIPCLOSE", T_CMD_MS);                    /* "ERROR" here just means nothing was open */
   at_cmd("AT+CIPMUX=0", T_CMD_MS);                    /* single connection: "+IPD,<len>:" framing */
   if (snprintf(cmd, sizeof(cmd), "AT+CIPSTART=\"%s\",\"%s\",%s", type, remoteIP, remotePort) >= (int)sizeof(cmd))
@@ -281,26 +292,28 @@ funcState_t ESP8266_portConnect(char *type, char *remoteIP, char *remotePort)
 funcState_t ESP8266_sendMessage(const uint8_t *msg, uint16_t msgSize)
 {
   char cmd[24];
-  if (msgSize == 0U || msgSize > 2048U) return funcErr;
+  if (msg == NULL || msgSize == 0U || msgSize > 2048U || esp_uart == NULL) return funcErr;
   snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%u", msgSize);
   esp_pump();
   got_prompt = 0; got_ok = 0; got_error = 0; got_send_ok = 0; got_send_fail = 0;
-  esp_write((const uint8_t *)cmd, (uint16_t)strlen(cmd));
-  esp_write((const uint8_t *)"\r\n", 2);
+  if (!esp_write((const uint8_t *)cmd, (uint16_t)strlen(cmd)) || !esp_write((const uint8_t *)"\r\n", 2))
+    return funcErr;
   /* Espressif firmware answers "OK" then ">", some older firmware only ">":
      wait for the prompt itself so neither case adds a delay. */
   if (!wait_until(&got_prompt, &got_error, T_CMD_MS)) return funcErr;
-  esp_write(msg, msgSize);
+  if (!esp_write(msg, msgSize)) return funcErr;
   return wait_until(&got_send_ok, &got_send_fail, T_SEND_MS) ? funcOk : funcErr;
 }
 
 uint32_t ESP8266_rxOverflows(void) { return ring_overflows; }
+uint32_t ESP8266_txErrors(void)    { return tx_errors; }
 
 /* ========================================================================== */
 /*  MQTT                                                                      */
 /* ========================================================================== */
 funcState_t MQTT_connectBroker(MQTT_InitTypeDef_t *c)
 {
+  if (c == NULL || c->clientID == NULL) return funcErr;
   const char *user = (c->connectFlag & UserNameFlag) ? c->username : NULL;
   const char *pass = (c->connectFlag & PasswordFlag) ? c->password : NULL;
   size_t n = mqtt_build_connect(txbuf, sizeof(txbuf), c->clientID, user, pass,
@@ -312,11 +325,18 @@ funcState_t MQTT_connectBroker(MQTT_InitTypeDef_t *c)
 
   uint32_t t0 = HAL_GetTick();
   while ((HAL_GetTick() - t0) < T_ACK_MS && connack_code < 0) esp_pump();
-  return (connack_code == 0) ? funcOk : funcErr;      /* 0 = accepted, 1..5 = refused */
+  if (connack_code != 0) return funcErr;               /* 1..5 = refused, -1 = no answer */
+  if ((c->connectFlag & CleanSession) && connack_session_present)
+  {
+    mqtt_connected = false;                            /* clean session asked, broker kept one: protocol error */
+    return funcErr;
+  }
+  return funcOk;
 }
 
 funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS)
 {
+  if (topic == NULL || msg == NULL) return funcErr;
   if (QoS != QoS0) return funcErr;                    /* QoS 0 only: refuse rather than silently downgrade */
   size_t n = mqtt_build_publish(txbuf, sizeof(txbuf), topic, (const uint8_t *)msg, strlen(msg), 0);
   if (n == 0U || !mqtt_connected) return funcErr;
@@ -325,6 +345,7 @@ funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS)
 
 funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS)
 {
+  if (topic == NULL || *topic == '\0') return funcErr;
   if (QoS != QoS0) return funcErr;                    /* QoS 0 only */
   uint16_t id = next_packet_id++;
   if (next_packet_id == 0U) next_packet_id = 1;
@@ -340,6 +361,7 @@ funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS)
 
 funcState_t MQTT_unsubscribeTopic(char *topic)
 {
+  if (topic == NULL || *topic == '\0') return funcErr;
   uint16_t id = next_packet_id++;
   if (next_packet_id == 0U) next_packet_id = 1;
   size_t n = mqtt_build_unsubscribe(txbuf, sizeof(txbuf), id, topic);
@@ -382,7 +404,8 @@ bool MQTT_isConnected(void)
 int MQTT_getMessage(char *topic, size_t topic_size, char *msg, size_t msg_size)
 {
   esp_pump();
-  if (!msg_pending || topic_size == 0U || msg_size == 0U) return 0;
+  if (topic == NULL || msg == NULL || topic_size == 0U || msg_size == 0U) return 0;
+  if (!msg_pending) return 0;
   strncpy(topic, msg_topic, topic_size - 1U); topic[topic_size - 1U] = '\0';
   strncpy(msg, msg_payload, msg_size - 1U);   msg[msg_size - 1U] = '\0';
   msg_pending = false;

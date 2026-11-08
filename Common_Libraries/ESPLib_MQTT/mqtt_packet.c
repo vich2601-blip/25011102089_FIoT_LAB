@@ -59,6 +59,7 @@ size_t mqtt_build_connect(uint8_t *buf, size_t size, const char *client_id,
                           uint16_t keep_alive_s, int clean_session)
 {
   writer_t w = { buf, size, 0, 0 };
+  if (buf == NULL || client_id == NULL) return 0;
   uint8_t flags = clean_session ? 0x02U : 0x00U;
   size_t body = 10U + 2U + strlen(client_id);          /* variable header + client id */
   if (username && *username) { flags |= 0x80U; body += 2U + strlen(username); }
@@ -81,8 +82,10 @@ size_t mqtt_build_publish(uint8_t *buf, size_t size, const char *topic,
                           const uint8_t *payload, size_t payload_len, int retain)
 {
   writer_t w = { buf, size, 0, 0 };
+  if (buf == NULL || topic == NULL || (payload == NULL && payload_len > 0U)) return 0;
   size_t tlen = strlen(topic);
   if (tlen == 0U || tlen > 65535U) return 0;
+  if (strpbrk(topic, "+#") != NULL) return 0;        /* wildcards are not allowed in a topic name */
   if (!put_header(&w, (uint8_t)((MQTT_PKT_PUBLISH << 4) | (retain ? 1U : 0U)), 2U + tlen + payload_len)) return 0;
   put_str(&w, topic);
   put_bytes(&w, payload, payload_len);   /* QoS 0: no packet identifier */
@@ -93,6 +96,7 @@ size_t mqtt_build_subscribe(uint8_t *buf, size_t size, uint16_t packet_id,
                             const char *topic, uint8_t qos)
 {
   writer_t w = { buf, size, 0, 0 };
+  if (buf == NULL || topic == NULL) return 0;
   size_t tlen = strlen(topic);
   if (tlen == 0U || packet_id == 0U || qos > 2U) return 0;
   if (!put_header(&w, (uint8_t)((MQTT_PKT_SUBSCRIBE << 4) | 0x02U), 2U + 2U + tlen + 1U)) return 0;
@@ -105,6 +109,7 @@ size_t mqtt_build_subscribe(uint8_t *buf, size_t size, uint16_t packet_id,
 size_t mqtt_build_unsubscribe(uint8_t *buf, size_t size, uint16_t packet_id, const char *topic)
 {
   writer_t w = { buf, size, 0, 0 };
+  if (buf == NULL || topic == NULL) return 0;
   size_t tlen = strlen(topic);
   if (tlen == 0U || packet_id == 0U) return 0;
   if (!put_header(&w, (uint8_t)((MQTT_PKT_UNSUBSCRIBE << 4) | 0x02U), 2U + 2U + tlen)) return 0;
@@ -147,7 +152,15 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
   const uint8_t *b = p->body;
   const uint32_t n = p->remaining;
 
-  p->code = 0; p->id = 0; p->qos = 0;
+  p->code = 0; p->id = 0; p->qos = 0; p->session_present = 0;
+
+  /* fixed-header flags are fixed for every type except PUBLISH:
+     0010 for PUBREL / SUBSCRIBE / UNSUBSCRIBE, 0000 for the rest */
+  if (type != MQTT_PKT_PUBLISH)
+  {
+    uint8_t want = (type == 6U || type == MQTT_PKT_SUBSCRIBE || type == MQTT_PKT_UNSUBSCRIBE) ? 0x02U : 0x00U;
+    if ((p->header & 0x0FU) != want) return MQTT_EVT_ERROR;
+  }
   p->topic_buf[0] = '\0'; p->payload_buf[0] = 0; p->payload_len = 0;
 
   switch (type)
@@ -155,6 +168,8 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
     case MQTT_PKT_CONNACK:                               /* 0x20 0x02 flags code */
       if (p->header != 0x20U || n != 2U) return MQTT_EVT_ERROR;
       if ((b[0] & 0xFEU) != 0U || b[1] > 5U) return MQTT_EVT_ERROR;   /* reserved bits / unknown code */
+      if (b[1] != 0U && (b[0] & 0x01U)) return MQTT_EVT_ERROR;       /* refused => Session Present must be 0 */
+      p->session_present = b[0] & 0x01U;
       p->code = b[1];                                   /* 0 = connection accepted */
       return MQTT_EVT_CONNACK;
 
@@ -191,6 +206,8 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
         pos += 2U;
       }
       if (tlen >= sizeof(p->topic_buf)) return MQTT_EVT_ERROR;     /* destination too small */
+      if (memchr(&b[2], '+', tlen) || memchr(&b[2], '#', tlen) || memchr(&b[2], '\0', tlen))
+        return MQTT_EVT_ERROR;                                       /* invalid topic name */
       memcpy(p->topic_buf, &b[2], tlen);
       p->topic_buf[tlen] = '\0';
 

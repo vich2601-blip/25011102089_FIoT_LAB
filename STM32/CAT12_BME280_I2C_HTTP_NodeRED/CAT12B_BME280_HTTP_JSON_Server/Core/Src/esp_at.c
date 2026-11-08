@@ -68,6 +68,7 @@ static int ring_pop(uint8_t *c)
 static uint32_t truncated_lines = 0;
 static uint32_t tx_errors = 0;
 static uint8_t  line_cut = 0;          /* current line exceeded the buffer */
+static uint8_t  skip_to_eol = 0;       /* after an overflow: ignore input up to the next line break */
 
 static int uart_write(const char *s, uint16_t len)
 {
@@ -79,16 +80,21 @@ static int uart_write(const char *s, uint16_t len)
   return 1;
 }
 
-/* After a ring-buffer overflow the partial line is garbage: start fresh */
-static void resync_after_overflow(void)
+/* After a ring-buffer overflow, bytes are missing somewhere in what is buffered.
+   Discard the buffered data and the partial line, then ignore input until the
+   next line break so parsing restarts on a clean boundary.
+   Returns 1 if an overflow was handled. */
+static int resync_after_overflow(void)
 {
   static uint32_t seen = 0;
-  if (ring_overflows != seen)
-  {
-    seen = ring_overflows;
-    line_len = 0;
-    line_cut = 0;
-  }
+  if (ring_overflows == seen)
+    return 0;
+  seen = ring_overflows;
+  ring_tail = ring_head;
+  line_len = 0;
+  line_cut = 0;
+  skip_to_eol = 1;
+  return 1;
 }
 
 void esp_at_init(UART_HandleTypeDef *huart, esp_urc_handler_t urc_handler)
@@ -116,13 +122,24 @@ uint32_t esp_at_tx_errors(void)       { return tx_errors; }
    Returns 1 when a complete line is in line_acc (NUL-terminated). */
 static int line_feed(uint8_t c)
 {
+  if (skip_to_eol)                    /* resynchronising after an overflow */
+  {
+    if (c == '\r' || c == '\n')
+      skip_to_eol = 0;
+    return 0;
+  }
   if (c == '\r' || c == '\n')
   {
     if (line_len == 0U)
       return 0;
     line_acc[line_len] = '\0';
     line_len = 0;
-    if (line_cut) { truncated_lines++; line_cut = 0; }
+    if (line_cut)                     /* too long: never hand a cut line on as a valid one */
+    {
+      truncated_lines++;
+      line_cut = 0;
+      return 0;
+    }
     return 1;
   }
   if (line_len < ESP_LINE_MAX - 1U)
@@ -278,14 +295,19 @@ esp_result_t esp_at_start_server(uint16_t port)
 /* Wait for the CIPSEND '>' prompt. Works whether or not the firmware sends
    "OK" first. Other lines that arrive meanwhile are not thrown away:
    unsolicited ones (+IPD, n,CONNECT, ...) still go to the callback, and
-   ERROR / busy / link-closed answers end the wait with a failure. */
-static int wait_for_prompt(uint32_t timeout_ms)
+   ERROR, busy, "<link>,CLOSED", Wi-Fi loss or an RX overflow end the wait
+   with a failure. */
+static int wait_for_prompt(uint8_t link, uint32_t timeout_ms)
 {
   uint32_t start = HAL_GetTick();
   uint8_t  c;
+  char     closed[12];
+  snprintf(closed, sizeof(closed), "%u,CLOSED", link);
   resync_after_overflow();
   while ((HAL_GetTick() - start) < timeout_ms)
   {
+    if (resync_after_overflow())
+      return 0;                       /* data lost: the prompt state is unknown */
     if (!ring_pop(&c))
       continue;
     if (c == '>' && line_len == 0U)
@@ -297,6 +319,8 @@ static int wait_for_prompt(uint32_t timeout_ms)
       return 0;
     if (is_unsolicited(line_acc) && urc_cb != NULL)
       urc_cb(line_acc);
+    if (strcmp(line_acc, closed) == 0 || strcmp(line_acc, "WIFI DISCONNECT") == 0)
+      return 0;                       /* our link (or Wi-Fi) went away */
   }
   return 0;
 }
@@ -313,7 +337,7 @@ int esp_at_send(uint8_t link, const char *data, uint16_t len)
   snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%u,%u", link, len);
   if (!uart_write(cmd, (uint16_t)strlen(cmd)) || !uart_write("\r\n", 2))
     return 0;
-  if (!wait_for_prompt(2000))           /* do not wait for "OK": some firmware sends only '>' */
+  if (!wait_for_prompt(link, 2000))     /* do not wait for "OK": some firmware sends only '>' */
     return 0;
 
   if (!uart_write(data, len))

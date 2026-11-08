@@ -64,6 +64,7 @@ static int      broker_refuses;
 static int      broker_silent;         /* do not answer PINGREQ / UNSUBSCRIBE */
 static uint8_t  suback_grant;          /* QoS the broker grants in SUBACK */
 static uint8_t  ack_id_offset;         /* answer SUBACK with a wrong packet id */
+static uint8_t  session_present;       /* CONNACK Session Present flag */
 static int      cipsend_ok_first = 1;  /* 1: "OK" then ">" (Espressif), 0: only ">" (older firmware) */
 static int      skip_lf;               /* the \n that ends an AT command line */
 
@@ -71,7 +72,7 @@ static void broker_handle(const uint8_t *p, size_t n)
 {
   (void)n;
   uint8_t type = p[0] >> 4;
-  if (type == 1) { uint8_t ack[] = { 0x20, 0x02, 0x00, (uint8_t)(broker_refuses ? 5 : 0) }; esp_ipd(ack, sizeof ack); }
+  if (type == 1) { uint8_t ack[] = { 0x20, 0x02, session_present, (uint8_t)(broker_refuses ? 5 : 0) }; esp_ipd(ack, sizeof ack); }
   if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], (uint8_t)(p[3] + ack_id_offset), suback_grant }; esp_ipd(ack, sizeof ack); }
   if (type == 10 && !broker_silent) { uint8_t ack[] = { 0xB0, 0x02, p[2], p[3] }; esp_ipd(ack, sizeof ack); }
   if (type == 12 && !broker_silent) { uint8_t ack[] = { 0xD0, 0x00 }; esp_ipd(ack, sizeof ack); }
@@ -233,11 +234,32 @@ int main(void)
     CHECK(ESP8266_rxOverflows() > 0);
     CHECK(!MQTT_isConnected());
     CHECK(MQTTDataHandler(topic, msg) == 0);
+    CHECK(ESP8266_portConnect("TCP", "broker", "1883") == funcOk);    /* TCP is treated as stale too */
     CHECK(MQTT_connectBroker(&cfg) == funcOk && MQTT_isConnected());   /* clean reconnect works */
     const uint8_t pub[] = { 0x30, 0x07, 0x00, 0x03, 'a', '/', 'd', 'o', 'k' };
     esp_ipd(pub, sizeof pub); deliver_all();
     CHECK(MQTTDataHandler(topic, msg) == 1 && strcmp(msg, "ok") == 0);
   }
+  /* clean session requested but broker says a session is present -> protocol error */
+  session_present = 1;
+  CHECK(MQTT_connectBroker(&cfg) == funcErr && !MQTT_isConnected());
+  session_present = 0;
+  CHECK(MQTT_connectBroker(&cfg) == funcOk);
+
+  /* incoming PUBLISH with a wildcard in the topic name is invalid and dropped */
+  {
+    const uint8_t bad[] = { 0x30, 0x07, 0x00, 0x03, 'a', '/', '#', 'h', 'i' };
+    uint32_t d0 = MQTT_droppedMessages();
+    esp_ipd(bad, sizeof bad); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 0 && MQTT_droppedMessages() == d0 + 1);
+  }
+  /* argument checks */
+  CHECK(MQTT_publishTopic("a/+", "x", QoS0) == funcErr);      /* wildcard in a topic name */
+  CHECK(MQTT_publishTopic(NULL, "x", QoS0) == funcErr && MQTT_publishTopic("a/b", NULL, QoS0) == funcErr);
+  CHECK(MQTT_subscribeTopic(NULL, QoS0) == funcErr && MQTT_unsubscribeTopic("") == funcErr);
+  CHECK(MQTT_connectBroker(NULL) == funcErr && MQTT_getMessage(NULL, 4, msg, 4) == 0);
+  CHECK(ESP8266_sendMessage(NULL, 4) == funcErr && ESP8266_txErrors() == 0);
+
   printf("ESPLib: %d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;
 }

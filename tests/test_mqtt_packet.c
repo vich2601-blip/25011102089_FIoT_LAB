@@ -55,6 +55,8 @@ static void test_publish_long_payload(void)
   CHECK(n == 1 + 2 + 205 && b[0] == 0x30 && b[1] == (205 % 128 | 0x80) && b[2] == 205 / 128);
   CHECK(mqtt_build_publish(b, 50, "a/b", payload, sizeof payload, 0) == 0);   /* does not fit */
   CHECK(mqtt_build_publish(b, sizeof b, "", payload, 1, 0) == 0);             /* empty topic */
+  CHECK(mqtt_build_publish(b, sizeof b, "a/#", payload, 1, 0) == 0);          /* wildcard topic name */
+  CHECK(mqtt_build_publish(b, sizeof b, NULL, payload, 1, 0) == 0);
 }
 
 static void test_subscribe(void)
@@ -102,6 +104,16 @@ static void test_parse_acks(void)
   CHECK(feed_all(&p, unsuback_id0, sizeof unsuback_id0, &ev) == MQTT_EVT_ERROR);
   const uint8_t unsuback_hdr[] = { 0xB2, 0x02, 0x00, 0x09 };          /* flags must be 0 */
   CHECK(feed_all(&p, unsuback_hdr, sizeof unsuback_hdr, &ev) == MQTT_EVT_ERROR);
+  const uint8_t refused_sp[] = { 0x20, 0x02, 0x01, 0x05 };           /* refused but Session Present = 1 */
+  CHECK(feed_all(&p, refused_sp, sizeof refused_sp, &ev) == MQTT_EVT_ERROR);
+  const uint8_t accepted_sp[] = { 0x20, 0x02, 0x01, 0x00 };          /* accepted, session present */
+  CHECK(feed_all(&p, accepted_sp, sizeof accepted_sp, &ev) == MQTT_EVT_CONNACK && p.session_present == 1);
+  const uint8_t puback_flags[] = { 0x41, 0x02, 0x00, 0x01 };         /* PUBACK flags must be 0 */
+  CHECK(feed_all(&p, puback_flags, sizeof puback_flags, &ev) == MQTT_EVT_ERROR);
+  const uint8_t pubrel_ok[] = { 0x62, 0x02, 0x00, 0x01 };            /* PUBREL needs flags 0010 */
+  CHECK(feed_all(&p, pubrel_ok, sizeof pubrel_ok, &ev) == MQTT_EVT_OTHER);
+  const uint8_t wild[] = { 0x30, 0x05, 0x00, 0x03, 'a', '/', '+' };  /* wildcard in topic name */
+  CHECK(feed_all(&p, wild, sizeof wild, &ev) == MQTT_EVT_ERROR);
   const uint8_t ping_hdr[] = { 0xD1, 0x00 };                          /* PINGRESP flags must be 0 */
   CHECK(feed_all(&p, ping_hdr, sizeof ping_hdr, &ev) == MQTT_EVT_ERROR);
   const uint8_t dup_q0[] = { 0x38, 0x04, 0x00, 0x01, 'a', 'x' };      /* DUP set on a QoS 0 PUBLISH */
