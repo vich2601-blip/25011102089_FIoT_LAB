@@ -1,0 +1,93 @@
+# CAT 9 — STM32 UART Command-Controlled LED
+
+| Field | Details |
+|---|---|
+| Experiment | Continuous Lab Evaluation 9 |
+| Date | Week 8 |
+| Experiment name | STM32 UART Command Controlled LED |
+| Platform | Blue Pill STM32F103C6T6 (Cortex-M3, 72 MHz) + USB-to-TTL + PuTTY |
+| Tools | STM32CubeMX + STM32CubeIDE, STM32 HAL, PuTTY |
+
+## Circuit Diagram
+
+![Circuit diagram – CAT 9](circuit.svg)
+
+| STM32 | USB-to-TTL |
+|---|---|
+| PA2 USART2_TX | RX |
+| PA3 USART2_RX | TX |
+| GND | GND |
+
+USART2 asynchronous, **115200-8-N-1**. LED on PC13.
+
+---
+
+## Task 9A — Basic UART Communication
+
+**Project folder:** [`CAT09A_Basic_UART_Communication`](CAT09A_Basic_UART_Communication/)
+
+### Working principle
+`HAL_UART_Receive()` polls with a 10 ms timeout so the loop never blocks. A received byte is echoed; if nothing arrives for 1 s (`HAL_GetTick()`), the character `A` is transmitted.
+
+### Pseudocode
+1. Print a banner.
+2. Try to receive one byte (10 ms).
+3. If received: echo (CR → CR LF), note the time.
+4. Else if 1 s passed: send `A`, note the time.
+
+### Code base
+- `uart_send_str()`, `uart_send_char()`
+
+### Expected output
+```
+CAT9A - STM32 Blue Pill UART ready (115200-8-N-1)
+AAAAhelloAAA
+```
+
+### Inference
+Both directions work at matching baud rate and frame format.
+
+---
+
+## Task 9B — String-Based Application Logic
+
+**Project folder:** [`CAT09B_String_Command_LED`](CAT09B_String_Command_LED/)
+
+### Working principle
+Characters are echoed and collected until CR/LF. The command is trimmed and upper-cased, then compared with `strcmp()`.
+
+| Command | Action |
+|---|---|
+| `LED ON` / `LED OFF` / `LED TOGGLE` | drive PC13 |
+| `STATUS` | report state |
+| `CRLF TEST` | send the CR/LF test strings |
+| `HELP` | list commands |
+
+| String | PuTTY result |
+|---|---|
+| `"HELLO\r\n"` | new line |
+| `"HELLO\r"` | back to start, next text overwrites |
+| `"HELLO\n"` | down one line, same column |
+| `"HELLO\r\nWORLD\r\n"` | two lines |
+
+### Pseudocode
+1. LED OFF, print prompt.
+2. Receive a byte.
+3. CR/LF and buffer not empty → terminate, `handle_command()`, clear buffer.
+4. Backspace → remove last char.
+5. Otherwise store and echo.
+
+### Code base
+- `normalise()` — trim + upper-case
+- `handle_command()`, `crlf_demo()`
+
+### Expected output
+```
+> led on
+OK: LED is ON
+> blink
+ERR: unknown command 'BLINK' (type HELP)
+```
+
+### Inference
+Line-based parsing turns the UART into a text command interface on top of HAL.

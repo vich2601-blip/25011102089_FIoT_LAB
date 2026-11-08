@@ -1,0 +1,174 @@
+[
+  {
+    "id": "cat12flow",
+    "type": "tab",
+    "label": "CAT12 BME280 HTTP",
+    "disabled": false,
+    "info": "Polls the STM32 HTTP server (CAT12B) every 5 s and builds a min/max/average table.\nEdit the URL in the http request node to the IP printed on the STM32 debug UART."
+  },
+  {
+    "id": "c12cmt",
+    "type": "comment",
+    "z": "cat12flow",
+    "name": "1) set the STM32 IP in 'GET STM32 /'   2) Deploy   3) watch the Debug sidebar",
+    "info": "",
+    "x": 300,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "c12inj",
+    "type": "inject",
+    "z": "cat12flow",
+    "name": "every 5 s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "5",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "3",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 100,
+    "wires": [
+      [
+        "c12http"
+      ]
+    ]
+  },
+  {
+    "id": "c12http",
+    "type": "http request",
+    "z": "cat12flow",
+    "name": "GET STM32 /",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "http://192.168.1.105/",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 320,
+    "y": 100,
+    "wires": [
+      [
+        "c12raw",
+        "c12stats"
+      ]
+    ]
+  },
+  {
+    "id": "c12raw",
+    "type": "debug",
+    "z": "cat12flow",
+    "name": "BME280 JSON",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 540,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "c12stats",
+    "type": "function",
+    "z": "cat12flow",
+    "name": "min / max / average",
+    "func": "// CAT12/13 - running statistics of the BME280 readings\nif (msg.topic === \"reset\") {\n    context.set(\"stats\", {});\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"reset\" });\n    return null;\n}\nconst d = msg.payload;\nif (!d || d.status !== \"success\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"bad reading\" });\n    return null;\n}\nconst names = {\n    temperature: \"Temperature (°C)\",\n    humidity:    \"Humidity (%RH)\",\n    pressure:    \"Pressure (hPa)\"\n};\nconst s = context.get(\"stats\") || {};\nfor (const k of Object.keys(names)) {\n    const v = Number(d[k]);\n    if (!s[k]) s[k] = { min: v, max: v, sum: 0, n: 0 };\n    s[k].min = Math.min(s[k].min, v);\n    s[k].max = Math.max(s[k].max, v);\n    s[k].sum += v;\n    s[k].n   += 1;\n}\ncontext.set(\"stats\", s);\n\nconst rows = Object.keys(names).map(k => ({\n    parameter: names[k],\n    minimum:   +s[k].min.toFixed(2),\n    maximum:   +s[k].max.toFixed(2),\n    average:   +(s[k].sum / s[k].n).toFixed(2)\n}));\nlet table = \"Parameter            Minimum  Maximum  Average\\n\";\nfor (const r of rows) {\n    table += r.parameter.padEnd(20) + String(r.minimum).padStart(8) +\n             String(r.maximum).padStart(9) + String(r.average).padStart(9) + \"\\n\";\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: s.temperature.n + \" samples\" });\nmsg.payload = rows;\nmsg.table = table;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 550,
+    "y": 120,
+    "wires": [
+      [
+        "c12table",
+        "c12rows"
+      ]
+    ]
+  },
+  {
+    "id": "c12table",
+    "type": "debug",
+    "z": "cat12flow",
+    "name": "statistics table (text)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "table",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "c12rows",
+    "type": "debug",
+    "z": "cat12flow",
+    "name": "statistics rows (array)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "c12reset",
+    "type": "inject",
+    "z": "cat12flow",
+    "name": "reset statistics",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "3",
+    "topic": "reset",
+    "payload": "",
+    "payloadType": "str",
+    "x": 330,
+    "y": 160,
+    "wires": [
+      [
+        "c12stats"
+      ]
+    ]
+  }
+]

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="480" viewBox="0 0 960 480" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect width="960" height="480" fill="#ffffff"/>
+<text x="480.0" y="34" font-size="20" font-weight="700" text-anchor="middle" fill="#24292f">CAT 8 — STM32 GPIO bring-up, switch-controlled LED</text>
+<text x="480.0" y="58" font-size="13" text-anchor="middle" fill="#57606a">PC13 on-board LED (active-LOW), push-button on PA15 with internal pull-up</text>
+<rect x="30" y="78" width="400" height="276" rx="10" fill="#f6f8fa" stroke="#24292f" stroke-width="2"/>
+<text x="48" y="186.0" font-size="15" font-weight="700" fill="#24292f">STM32 Blue Pill</text>
+<text x="48" y="206.0" font-size="12" font-weight="400" fill="#24292f">STM32F103C6T6</text>
+<text x="48" y="226.0" font-size="12" font-weight="400" fill="#24292f">Cortex-M3, 72 MHz</text>
+<text x="48" y="246.0" font-size="12" font-weight="400" fill="#24292f">3.3 V logic</text>
+<rect x="660" y="78" width="280" height="36" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="100.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">On-board LED</text>
+<text x="422" y="100" font-size="12" font-weight="600" text-anchor="end" fill="#bc4c00">PC13</text>
+<circle cx="430" cy="96" r="4" fill="#bc4c00"/>
+<line x1="430" y1="96" x2="660" y2="96" stroke="#bc4c00" stroke-width="2.4"/>
+<circle cx="660" cy="96" r="4" fill="#bc4c00"/>
+<text x="668" y="100" font-size="12" fill="#24292f">LED (active-LOW)</text>
+<rect x="506.5" y="86" width="77" height="20" rx="4" fill="#ffffff" stroke="#bc4c00"/>
+<text x="545.0" y="100" font-size="11" text-anchor="middle" fill="#bc4c00">push-pull</text>
+<rect x="660" y="138" width="280" height="66" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="167.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">Push-button</text>
+<text x="928" y="183.0" font-size="11" font-weight="400" text-anchor="end" fill="#6e4b00">other leg → GND</text>
+<text x="422" y="160" font-size="12" font-weight="600" text-anchor="end" fill="#0969da">PA15</text>
+<circle cx="430" cy="156" r="4" fill="#0969da"/>
+<line x1="430" y1="156" x2="660" y2="156" stroke="#0969da" stroke-width="2.4"/>
+<circle cx="660" cy="156" r="4" fill="#0969da"/>
+<text x="668" y="160" font-size="12" fill="#24292f">switch</text>
+<rect x="513.5" y="146" width="63" height="20" rx="4" fill="#ffffff" stroke="#0969da"/>
+<text x="545.0" y="160" font-size="11" text-anchor="middle" fill="#0969da">pull-up</text>
+<text x="422" y="190" font-size="12" font-weight="600" text-anchor="end" fill="#24292f">GND</text>
+<circle cx="430" cy="186" r="4" fill="#24292f"/>
+<line x1="430" y1="186" x2="660" y2="186" stroke="#24292f" stroke-width="2.4"/>
+<circle cx="660" cy="186" r="4" fill="#24292f"/>
+<text x="668" y="190" font-size="12" fill="#24292f">switch</text>
+<rect x="660" y="228" width="280" height="126" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="287.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">ST-LINK V2</text>
+<text x="928" y="303.0" font-size="11" font-weight="400" text-anchor="end" fill="#6e4b00">programmer / debugger</text>
+<text x="422" y="250" font-size="12" font-weight="600" text-anchor="end" fill="#bf8700">PA13</text>
+<circle cx="430" cy="246" r="4" fill="#bf8700"/>
+<line x1="430" y1="246" x2="660" y2="246" stroke="#bf8700" stroke-width="2.4"/>
+<circle cx="660" cy="246" r="4" fill="#bf8700"/>
+<text x="668" y="250" font-size="12" fill="#24292f">SWDIO</text>
+<text x="422" y="280" font-size="12" font-weight="600" text-anchor="end" fill="#bf8700">PA14</text>
+<circle cx="430" cy="276" r="4" fill="#bf8700"/>
+<line x1="430" y1="276" x2="660" y2="276" stroke="#bf8700" stroke-width="2.4"/>
+<circle cx="660" cy="276" r="4" fill="#bf8700"/>
+<text x="668" y="280" font-size="12" fill="#24292f">SWCLK</text>
+<text x="422" y="310" font-size="12" font-weight="600" text-anchor="end" fill="#d1242f">3V3</text>
+<circle cx="430" cy="306" r="4" fill="#d1242f"/>
+<line x1="430" y1="306" x2="660" y2="306" stroke="#d1242f" stroke-width="2.4"/>
+<circle cx="660" cy="306" r="4" fill="#d1242f"/>
+<text x="668" y="310" font-size="12" fill="#24292f">3.3 V</text>
+<text x="422" y="340" font-size="12" font-weight="600" text-anchor="end" fill="#24292f">GND</text>
+<circle cx="430" cy="336" r="4" fill="#24292f"/>
+<line x1="430" y1="336" x2="660" y2="336" stroke="#24292f" stroke-width="2.4"/>
+<circle cx="660" cy="336" r="4" fill="#24292f"/>
+<text x="668" y="340" font-size="12" fill="#24292f">GND</text>
+<line x1="30" y1="386" x2="52" y2="386" stroke="#d1242f" stroke-width="3"/><text x="58" y="390" font-size="11" fill="#57606a">power</text>
+<line x1="142" y1="386" x2="164" y2="386" stroke="#24292f" stroke-width="3"/><text x="170" y="390" font-size="11" fill="#57606a">ground</text>
+<line x1="254" y1="386" x2="276" y2="386" stroke="#bc4c00" stroke-width="3"/><text x="282" y="390" font-size="11" fill="#57606a">output</text>
+<line x1="366" y1="386" x2="388" y2="386" stroke="#0969da" stroke-width="3"/><text x="394" y="390" font-size="11" fill="#57606a">input</text>
+<line x1="478" y1="386" x2="500" y2="386" stroke="#1a7f37" stroke-width="3"/><text x="506" y="390" font-size="11" fill="#57606a">UART</text>
+<line x1="590" y1="386" x2="612" y2="386" stroke="#8250df" stroke-width="3"/><text x="618" y="390" font-size="11" fill="#57606a">I²C</text>
+<line x1="702" y1="386" x2="724" y2="386" stroke="#bf8700" stroke-width="3"/><text x="730" y="390" font-size="11" fill="#57606a">ISP/SWD</text>
+<line x1="814" y1="386" x2="836" y2="386" stroke="#1b7c83" stroke-width="3"/><text x="842" y="390" font-size="11" fill="#57606a">timer/PWM</text>
+<text x="30" y="416" font-size="12" fill="#57606a">• PA15 is JTDI after reset → CubeMX SYS: Debug = Serial Wire</text>
+<text x="30" y="438" font-size="12" fill="#57606a">• Released = 1, pressed = 0</text>
+</svg>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="488" viewBox="0 0 960 488" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect width="960" height="488" fill="#ffffff"/>
+<text x="480.0" y="34" font-size="20" font-weight="700" text-anchor="middle" fill="#24292f">CAT 9 — STM32 UART command-controlled LED</text>
+<text x="480.0" y="58" font-size="13" text-anchor="middle" fill="#57606a">USART2 at 115200-8-N-1 to PuTTY, LED on PC13</text>
+<rect x="30" y="78" width="400" height="306" rx="10" fill="#f6f8fa" stroke="#24292f" stroke-width="2"/>
+<text x="48" y="201.0" font-size="15" font-weight="700" fill="#24292f">STM32 Blue Pill</text>
+<text x="48" y="221.0" font-size="12" font-weight="400" fill="#24292f">STM32F103C6T6</text>
+<text x="48" y="241.0" font-size="12" font-weight="400" fill="#24292f">Cortex-M3, 72 MHz</text>
+<text x="48" y="261.0" font-size="12" font-weight="400" fill="#24292f">3.3 V logic</text>
+<rect x="660" y="78" width="280" height="96" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="122.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">USB-to-TTL (3.3 V)</text>
+<text x="928" y="138.0" font-size="11" font-weight="400" text-anchor="end" fill="#6e4b00">→ PC, PuTTY 115200</text>
+<text x="422" y="100" font-size="12" font-weight="600" text-anchor="end" fill="#1a7f37">PA2 USART2_TX</text>
+<circle cx="430" cy="96" r="4" fill="#1a7f37"/>
+<line x1="430" y1="96" x2="660" y2="96" stroke="#1a7f37" stroke-width="2.4"/>
+<circle cx="660" cy="96" r="4" fill="#1a7f37"/>
+<text x="668" y="100" font-size="12" fill="#24292f">RX</text>
+<rect x="513.5" y="86" width="63" height="20" rx="4" fill="#ffffff" stroke="#1a7f37"/>
+<text x="545.0" y="100" font-size="11" text-anchor="middle" fill="#1a7f37">TX → RX</text>
+<text x="422" y="130" font-size="12" font-weight="600" text-anchor="end" fill="#1a7f37">PA3 USART2_RX</text>
+<circle cx="430" cy="126" r="4" fill="#1a7f37"/>
+<line x1="430" y1="126" x2="660" y2="126" stroke="#1a7f37" stroke-width="2.4"/>
+<circle cx="660" cy="126" r="4" fill="#1a7f37"/>
+<text x="668" y="130" font-size="12" fill="#24292f">TX</text>
+<rect x="513.5" y="116" width="63" height="20" rx="4" fill="#ffffff" stroke="#1a7f37"/>
+<text x="545.0" y="130" font-size="11" text-anchor="middle" fill="#1a7f37">RX ← TX</text>
+<text x="422" y="160" font-size="12" font-weight="600" text-anchor="end" fill="#24292f">GND</text>
+<circle cx="430" cy="156" r="4" fill="#24292f"/>
+<line x1="430" y1="156" x2="660" y2="156" stroke="#24292f" stroke-width="2.4"/>
+<circle cx="660" cy="156" r="4" fill="#24292f"/>
+<text x="668" y="160" font-size="12" fill="#24292f">GND</text>
+<rect x="660" y="198" width="280" height="36" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="220.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">On-board LED</text>
+<text x="422" y="220" font-size="12" font-weight="600" text-anchor="end" fill="#bc4c00">PC13</text>
+<circle cx="430" cy="216" r="4" fill="#bc4c00"/>
+<line x1="430" y1="216" x2="660" y2="216" stroke="#bc4c00" stroke-width="2.4"/>
+<circle cx="660" cy="216" r="4" fill="#bc4c00"/>
+<text x="668" y="220" font-size="12" fill="#24292f">LED (active-LOW)</text>
+<rect x="660" y="258" width="280" height="126" rx="8" fill="#fff8e6" stroke="#9a6700" stroke-width="1.6"/>
+<text x="928" y="317.0" font-size="13" font-weight="700" text-anchor="end" fill="#6e4b00">ST-LINK V2</text>
+<text x="928" y="333.0" font-size="11" font-weight="400" text-anchor="end" fill="#6e4b00">programmer / debugger</text>
+<text x="422" y="280" font-size="12" font-weight="600" text-anchor="end" fill="#bf8700">PA13</text>
+<circle cx="430" cy="276" r="4" fill="#bf8700"/>
+<line x1="430" y1="276" x2="660" y2="276" stroke="#bf8700" stroke-width="2.4"/>
+<circle cx="660" cy="276" r="4" fill="#bf8700"/>
+<text x="668" y="280" font-size="12" fill="#24292f">SWDIO</text>
+<text x="422" y="310" font-size="12" font-weight="600" text-anchor="end" fill="#bf8700">PA14</text>
+<circle cx="430" cy="306" r="4" fill="#bf8700"/>
+<line x1="430" y1="306" x2="660" y2="306" stroke="#bf8700" stroke-width="2.4"/>
+<circle cx="660" cy="306" r="4" fill="#bf8700"/>
+<text x="668" y="310" font-size="12" fill="#24292f">SWCLK</text>
+<text x="422" y="340" font-size="12" font-weight="600" text-anchor="end" fill="#d1242f">3V3</text>
+<circle cx="430" cy="336" r="4" fill="#d1242f"/>
+<line x1="430" y1="336" x2="660" y2="336" stroke="#d1242f" stroke-width="2.4"/>
+<circle cx="660" cy="336" r="4" fill="#d1242f"/>
+<text x="668" y="340" font-size="12" fill="#24292f">3.3 V</text>
+<text x="422" y="370" font-size="12" font-weight="600" text-anchor="end" fill="#24292f">GND</text>
+<circle cx="430" cy="366" r="4" fill="#24292f"/>
+<line x1="430" y1="366" x2="660" y2="366" stroke="#24292f" stroke-width="2.4"/>
+<circle cx="660" cy="366" r="4" fill="#24292f"/>
+<text x="668" y="370" font-size="12" fill="#24292f">GND</text>
+<line x1="30" y1="416" x2="52" y2="416" stroke="#d1242f" stroke-width="3"/><text x="58" y="420" font-size="11" fill="#57606a">power</text>
+<line x1="142" y1="416" x2="164" y2="416" stroke="#24292f" stroke-width="3"/><text x="170" y="420" font-size="11" fill="#57606a">ground</text>
+<line x1="254" y1="416" x2="276" y2="416" stroke="#bc4c00" stroke-width="3"/><text x="282" y="420" font-size="11" fill="#57606a">output</text>
+<line x1="366" y1="416" x2="388" y2="416" stroke="#0969da" stroke-width="3"/><text x="394" y="420" font-size="11" fill="#57606a">input</text>
+<line x1="478" y1="416" x2="500" y2="416" stroke="#1a7f37" stroke-width="3"/><text x="506" y="420" font-size="11" fill="#57606a">UART</text>
+<line x1="590" y1="416" x2="612" y2="416" stroke="#8250df" stroke-width="3"/><text x="618" y="420" font-size="11" fill="#57606a">I²C</text>
+<line x1="702" y1="416" x2="724" y2="416" stroke="#bf8700" stroke-width="3"/><text x="730" y="420" font-size="11" fill="#57606a">ISP/SWD</text>
+<line x1="814" y1="416" x2="836" y2="416" stroke="#1b7c83" stroke-width="3"/><text x="842" y="420" font-size="11" fill="#57606a">timer/PWM</text>
+<text x="30" y="446" font-size="12" fill="#57606a">• Commands: LED ON | LED OFF | LED TOGGLE | STATUS | CRLF TEST | HELP</text>
+</svg>

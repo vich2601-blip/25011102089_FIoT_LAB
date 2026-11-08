@@ -1,0 +1,306 @@
+[
+  {
+    "id": "cat13flow",
+    "type": "tab",
+    "label": "CAT13 BME280 MQTT",
+    "disabled": false,
+    "info": "Subscribes to the JSON published by CAT13C and splits it into temperature / humidity / pressure.\nThe inject nodes at the bottom control LD2 on the CAT13B board."
+  },
+  {
+    "id": "c13broker",
+    "type": "mqtt-broker",
+    "name": "EMQX public broker",
+    "broker": "broker.emqx.io",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "c13in",
+    "type": "mqtt in",
+    "z": "cat13flow",
+    "name": "vishrudh/stm32/bme280",
+    "topic": "vishrudh/stm32/bme280",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "c13broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 150,
+    "y": 100,
+    "wires": [
+      [
+        "c13raw",
+        "c13split",
+        "c13stats"
+      ]
+    ]
+  },
+  {
+    "id": "c13raw",
+    "type": "debug",
+    "z": "cat13flow",
+    "name": "raw JSON",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 400,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "c13split",
+    "type": "function",
+    "z": "cat13flow",
+    "name": "split T / H / P",
+    "func": "// {\"status\":\"success\",\"temperature\":..,\"humidity\":..,\"pressure\":..} -> 3 messages\nconst d = msg.payload;\nif (typeof d !== \"object\" || d.status !== \"success\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"invalid payload\" });\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: d.temperature + \" °C  \" + d.humidity + \" %RH  \" + d.pressure + \" hPa\" });\nreturn [\n    { topic: \"temperature\", payload: d.temperature },\n    { topic: \"humidity\",    payload: d.humidity },\n    { topic: \"pressure\",    payload: d.pressure }\n];",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 120,
+    "wires": [
+      [
+        "c13t"
+      ],
+      [
+        "c13h"
+      ],
+      [
+        "c13p"
+      ]
+    ]
+  },
+  {
+    "id": "c13t",
+    "type": "debug",
+    "z": "cat13flow",
+    "name": "temperature °C",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 640,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "c13h",
+    "type": "debug",
+    "z": "cat13flow",
+    "name": "humidity %RH",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 640,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "c13p",
+    "type": "debug",
+    "z": "cat13flow",
+    "name": "pressure hPa",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 640,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "c13stats",
+    "type": "function",
+    "z": "cat13flow",
+    "name": "min / max / average",
+    "func": "// CAT12/13 - running statistics of the BME280 readings\nif (msg.topic === \"reset\") {\n    context.set(\"stats\", {});\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"reset\" });\n    return null;\n}\nconst d = msg.payload;\nif (!d || d.status !== \"success\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"bad reading\" });\n    return null;\n}\nconst names = {\n    temperature: \"Temperature (°C)\",\n    humidity:    \"Humidity (%RH)\",\n    pressure:    \"Pressure (hPa)\"\n};\nconst s = context.get(\"stats\") || {};\nfor (const k of Object.keys(names)) {\n    const v = Number(d[k]);\n    if (!s[k]) s[k] = { min: v, max: v, sum: 0, n: 0 };\n    s[k].min = Math.min(s[k].min, v);\n    s[k].max = Math.max(s[k].max, v);\n    s[k].sum += v;\n    s[k].n   += 1;\n}\ncontext.set(\"stats\", s);\n\nconst rows = Object.keys(names).map(k => ({\n    parameter: names[k],\n    minimum:   +s[k].min.toFixed(2),\n    maximum:   +s[k].max.toFixed(2),\n    average:   +(s[k].sum / s[k].n).toFixed(2)\n}));\nlet table = \"Parameter            Minimum  Maximum  Average\\n\";\nfor (const r of rows) {\n    table += r.parameter.padEnd(20) + String(r.minimum).padStart(8) +\n             String(r.maximum).padStart(9) + String(r.average).padStart(9) + \"\\n\";\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: s.temperature.n + \" samples\" });\nmsg.payload = rows;\nmsg.table = table;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 410,
+    "y": 220,
+    "wires": [
+      [
+        "c13table"
+      ]
+    ]
+  },
+  {
+    "id": "c13table",
+    "type": "debug",
+    "z": "cat13flow",
+    "name": "statistics table",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "table",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 650,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "c13cmt",
+    "type": "comment",
+    "z": "cat13flow",
+    "name": "CAT13B - LED control",
+    "info": "",
+    "x": 140,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "c13on",
+    "type": "inject",
+    "z": "cat13flow",
+    "name": "ON",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "3",
+    "topic": "",
+    "payload": "ON",
+    "payloadType": "str",
+    "x": 130,
+    "y": 360,
+    "wires": [
+      [
+        "c13out"
+      ]
+    ]
+  },
+  {
+    "id": "c13off",
+    "type": "inject",
+    "z": "cat13flow",
+    "name": "OFF",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "3",
+    "topic": "",
+    "payload": "OFF",
+    "payloadType": "str",
+    "x": 130,
+    "y": 400,
+    "wires": [
+      [
+        "c13out"
+      ]
+    ]
+  },
+  {
+    "id": "c13tog",
+    "type": "inject",
+    "z": "cat13flow",
+    "name": "TOGGLE",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "3",
+    "topic": "",
+    "payload": "TOGGLE",
+    "payloadType": "str",
+    "x": 130,
+    "y": 440,
+    "wires": [
+      [
+        "c13out"
+      ]
+    ]
+  },
+  {
+    "id": "c13out",
+    "type": "mqtt out",
+    "z": "cat13flow",
+    "name": "LED command (CAT13B)",
+    "topic": "vishrudh/stm32/led",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "c13broker",
+    "x": 380,
+    "y": 400,
+    "wires": []
+  }
+]

@@ -1,0 +1,32 @@
+# ---------- Keil µVision ----------
+**/Objects/*
+!**/Objects/*.hex
+**/Listings/
+*.uvguix.*
+*.uvoptx
+*.uvopt
+*.lst
+*.m51
+*.obj
+*.lnp
+*.__i
+*.plg
+
+# ---------- STM32CubeIDE ----------
+Debug/
+Release/
+*.launch
+*.su
+*.cyclo
+*.list
+*.map
+*.elf
+*.o
+*.d
+.metadata/
+**/.settings/language.settings.xml
+
+# ---------- OS / editors ----------
+.DS_Store
+Thumbs.db
+.vscode/
