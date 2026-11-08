@@ -36,7 +36,9 @@ Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883*
 | 1-byte Remaining Length only, lengths and destination sizes not checked, strings not always terminated | Remaining Length up to 4 bytes, every length validated before copying, output always NUL-terminated, oversized packets skipped |
 | CONNACK / SUBACK never checked; `do {} while` loops could hang forever | CONNECT waits for CONNACK = accepted, SUBSCRIBE for SUBACK ≠ 0x80; every wait has a timeout and returns `funcOk` / `funcErr` |
 
-Tested on the PC: `make -C tests` (30 parser checks + 16 ESPLib checks against a simulated ESP8266, including a PUBLISH arriving in the middle of a send).
+Also: PINGREQ waits for PINGRESP (no answer → reconnect), topics that do not fit the buffer are dropped and counted, and the applications print the RX-overflow / dropped-packet counters when they change.
+
+Tested on the PC: `make -C tests` (39 parser checks + 27 ESPLib checks against a simulated ESP8266, including both `AT+CIPSEND` reply styles, a silent broker and a PUBLISH arriving in the middle of a send).
 
 ---
 
@@ -70,7 +72,7 @@ MQTT runs on top of the ESP8266 TCP link; the STM32 only has to frame the packet
 **Project folder:** [`CAT13B_MQTT_Subscribe_LED_Control`](CAT13B_MQTT_Subscribe_LED_Control/)
 
 ### Working principle
-After CONNACK the board subscribes to `vishrudh/stm32/led` and checks the SUBACK. `MQTTDataHandler()` returns 1 when a complete, validated PUBLISH has arrived. Only the exact commands `ON` / `OFF` / `TOGGLE` act on LD2; anything else is ignored. PINGREQ every 60 s keeps the session alive. `MQTTTimer()` is still called from `SysTick_Handler` (the lab-sheet hook) but is no longer needed.
+After CONNACK the board subscribes to `vishrudh/stm32/led` and checks the SUBACK. `MQTTDataHandler()` returns 1 when a complete, validated PUBLISH has arrived. Only the exact commands `ON` / `OFF` / `TOGGLE` act on LD2; anything else is ignored. PINGREQ every 60 s keeps the session alive; if the broker does not answer, the board reconnects and resubscribes. `MQTTTimer()` is still called from `SysTick_Handler` (the lab-sheet hook) but is no longer needed.
 
 > **Security note:** broker.emqx.io is a public test broker — anyone who knows the topic can publish to it. For anything beyond a lab demo, use a private broker with a login: define `MQTT_USERNAME` / `MQTT_PASSWORD` in `wifi_secrets.h` and the client sends them in CONNECT.
 

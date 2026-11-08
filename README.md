@@ -63,9 +63,9 @@ flowchart LR
 
 | What | How it was checked | Result |
 |---|---|---|
-| All 17 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors, 0 warnings with `-Wall -Wextra` — see [`docs/build-log.txt`](docs/build-log.txt) |
+| All 17 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors; 0 warnings with `-Wall -Wextra` in the application code (`Core/`). Vendor HAL drivers are compiled with warnings off (`-w`), as is usual for vendor code — see [`docs/build-log.txt`](docs/build-log.txt) |
 | All 15 8051 projects | compiled with SDCC from the Keil sources (keywords mapped on a temporary copy) | 0 errors; committed HEX files match the sources. SDCC is not Keil C51 — Keil output is not verified here |
-| MQTT client (CAT 13) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 30 packet encode/parse checks + 16 ESPLib checks against a simulated ESP8266 and broker |
+| MQTT client (CAT 13) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 39 packet encode/parse/validation checks + 27 ESPLib checks against a simulated ESP8266 and broker (both CIPSEND reply styles, PINGRESP timeout, malformed packets, a PUBLISH arriving mid-send) |
 | 8051 timing | measured in the uCsim 8051 simulator at 11.0592 MHz (SDCC code) | CAT 2 blink 1.000 s, `delay_ms()` 1.000 ms, CAT 5 timer toggle 0.999 s, 100 Hz mode 100.2 Hz |
 | Node-RED flows | JSON structure and wiring validated, function code syntax-checked | valid |
 | Memory use | linker output | largest Blue Pill build 7.9 KB of 32 KB flash; largest Nucleo build 33 KB of 512 KB |
@@ -91,7 +91,7 @@ flowchart LR
 | progisp + USBasp | flashing the AT89S52 |
 | STM32CubeIDE / CubeMX | STM32 projects (`.ioc`, `.project`, `.cproject`) |
 | Bosch BME280 Sensor API v3.5.1 | sensor driver (CAT 12, 13) |
-| ESPLib (course library) | ESP8266 + MQTT (CAT 13) |
+| ESPLib API (reimplemented, MIT) | ESP8266 + MQTT client (CAT 13) |
 | PuTTY, Node-RED | terminal, dashboards / analytics |
 
 ## Repository layout
@@ -103,7 +103,7 @@ flowchart LR
 STM32/CATxx_<name>/
 ├── README.md, circuit.png, wokwi/, dataflow.svg, Node-RED flows (CAT 12, 13)
 └── <Project>/       Core/ (Src, Inc, Startup), Drivers/, *.ioc, .project, .cproject, *.ld
-Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib (fixed), helpers
+Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib MQTT client (rewrite), helpers
 ```
 
 ## Building
@@ -127,4 +127,4 @@ Original work: MIT — see [`LICENSE`](LICENSE). Third-party components keep the
 
 ## Third-party code
 
-STM32Cube HAL / CMSIS (STMicroelectronics), Bosch Sensortec BME280_SensorAPI (BSD-3-Clause), ESPLib by Can Güveren (course library, modified), Keil `STARTUP.A51`.
+STM32Cube HAL / CMSIS (STMicroelectronics), Bosch Sensortec BME280_SensorAPI (BSD-3-Clause), Keil `STARTUP.A51`. The CAT 13 MQTT client keeps the function names of the course ESPLib (by Can Güveren) but is an independent implementation — see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
