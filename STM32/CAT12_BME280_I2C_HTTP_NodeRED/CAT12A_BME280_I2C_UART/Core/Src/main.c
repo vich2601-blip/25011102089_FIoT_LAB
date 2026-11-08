@@ -453,11 +453,28 @@ int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, v
   return BME280_OK;
 }
 
-/* delay_function(): the API asks for microseconds, HAL only has ms -> round up */
+/* delay_function(): the API asks for microseconds.
+ * >= 1 ms : HAL_Delay (SysTick, waits at least the requested time)
+ *  < 1 ms : busy-wait on the Cortex-M4 DWT cycle counter (84 cycles = 1 us) */
 void user_delay_us(uint32_t period, void *intf_ptr)
 {
   (void)intf_ptr;
-  HAL_Delay((period + 999U) / 1000U);
+  if (period >= 1000U)
+  {
+    HAL_Delay((period + 999U) / 1000U);
+    return;
+  }
+  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) == 0U)        /* enable the cycle counter once */
+  {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  }
+  uint32_t start = DWT->CYCCNT;
+  uint32_t ticks = period * (SystemCoreClock / 1000000U);
+  while ((DWT->CYCCNT - start) < ticks)                  /* unsigned maths: wrap-safe */
+  {
+  }
 }
 /* USER CODE END 4 */
 

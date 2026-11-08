@@ -102,6 +102,17 @@ size_t mqtt_build_subscribe(uint8_t *buf, size_t size, uint16_t packet_id,
   return w.overflow ? 0 : w.pos;
 }
 
+size_t mqtt_build_unsubscribe(uint8_t *buf, size_t size, uint16_t packet_id, const char *topic)
+{
+  writer_t w = { buf, size, 0, 0 };
+  size_t tlen = strlen(topic);
+  if (tlen == 0U || packet_id == 0U) return 0;
+  if (!put_header(&w, (uint8_t)((MQTT_PKT_UNSUBSCRIBE << 4) | 0x02U), 2U + 2U + tlen)) return 0;
+  put_u16(&w, packet_id);
+  put_str(&w, topic);
+  return w.overflow ? 0 : w.pos;
+}
+
 size_t mqtt_build_pingreq(uint8_t *buf, size_t size)
 {
   if (size < 2U) return 0;
@@ -136,7 +147,7 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
   const uint8_t *b = p->body;
   const uint32_t n = p->remaining;
 
-  p->code = 0; p->id = 0;
+  p->code = 0; p->id = 0; p->qos = 0;
   p->topic_buf[0] = '\0'; p->payload_buf[0] = 0; p->payload_len = 0;
 
   switch (type)
@@ -156,6 +167,11 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
       p->code = b[2];                                   /* granted QoS or 0x80 */
       return MQTT_EVT_SUBACK;
 
+    case MQTT_PKT_UNSUBACK:                              /* 0xB0 0x02 id_hi id_lo */
+      if (p->header != 0xB0U || n != 2U) return MQTT_EVT_ERROR;
+      p->id = (uint16_t)((b[0] << 8) | b[1]);
+      return (p->id != 0U) ? MQTT_EVT_UNSUBACK : MQTT_EVT_ERROR;
+
     case MQTT_PKT_PINGRESP:
       return (p->header == 0xD0U && n == 0U) ? MQTT_EVT_PINGRESP : MQTT_EVT_ERROR;
 
@@ -171,6 +187,7 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
       {
         if (pos + 2U > n) return MQTT_EVT_ERROR;
         p->id = (uint16_t)((b[pos] << 8) | b[pos + 1U]);
+        if (p->id == 0U) return MQTT_EVT_ERROR;                  /* QoS 1/2 need a non-zero id */
         pos += 2U;
       }
       if (tlen >= sizeof(p->topic_buf)) return MQTT_EVT_ERROR;     /* destination too small */
@@ -183,6 +200,7 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
       p->payload_buf[plen] = 0;
       p->payload_len = plen;
       p->code = (plen != n - pos) ? 1U : 0U;                       /* 1 = payload was truncated */
+      p->qos = qos;
       return MQTT_EVT_PUBLISH;
     }
 

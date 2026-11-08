@@ -36,7 +36,7 @@
 |---|---|---|
 | read_register() | `user_i2c_read()` | `HAL_I2C_Mem_Read()` |
 | write_register() | `user_i2c_write()` | `HAL_I2C_Mem_Write()` |
-| delay_function() | `user_delay_us()` | `HAL_Delay()` rounded up |
+| delay_function() | `user_delay_us()` | `HAL_Delay()` for ≥ 1 ms, DWT cycle counter busy-wait for shorter delays |
 
 The program follows the suggested progression: chip ID → raw registers → Bosch compensation → display → compare settings (Profile A 2×/filter off vs Profile B 16×/filter 16, switched every 10 readings).
 

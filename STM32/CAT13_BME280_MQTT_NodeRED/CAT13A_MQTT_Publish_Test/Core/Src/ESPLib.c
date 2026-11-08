@@ -47,6 +47,7 @@ static mqtt_parser_t parser;
 static int16_t  connack_code = -1;             /* -1 = none received yet */
 static int16_t  suback_code  = -1;
 static uint16_t suback_id;
+static int32_t  unsuback_id  = -1;            /* -1 = none received yet */
 static uint16_t next_packet_id = 1;
 static uint8_t  txbuf[TX_PACKET_MAX];
 
@@ -94,7 +95,11 @@ static void on_mqtt_event(mqtt_event_t ev)
     case MQTT_EVT_PINGRESP:
       got_pingresp = 1;
       break;
+    case MQTT_EVT_UNSUBACK:
+      unsuback_id = parser.id;
+      break;
     case MQTT_EVT_PUBLISH:
+      if (parser.qos != 0U) { msg_dropped++; break; }                /* QoS 0 client: no PUBACK/PUBREC support */
       if (msg_pending || parser.code != 0U ||                          /* busy or payload truncated */
           strlen(parser.topic) >= sizeof(msg_topic)) { msg_dropped++; break; }   /* topic would not fit */
       strncpy(msg_topic, parser.topic, sizeof(msg_topic) - 1U);
@@ -290,7 +295,7 @@ funcState_t MQTT_connectBroker(MQTT_InitTypeDef_t *c)
 
 funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS)
 {
-  (void)QoS;                                          /* QoS 0 only */
+  if (QoS != QoS0) return funcErr;                    /* QoS 0 only: refuse rather than silently downgrade */
   size_t n = mqtt_build_publish(txbuf, sizeof(txbuf), topic, (const uint8_t *)msg, strlen(msg), 0);
   if (n == 0U || !mqtt_connected) return funcErr;
   return ESP8266_sendMessage(txbuf, (uint16_t)n);
@@ -298,7 +303,7 @@ funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS)
 
 funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS)
 {
-  (void)QoS;                                          /* subscribe with QoS 0 */
+  if (QoS != QoS0) return funcErr;                    /* QoS 0 only */
   uint16_t id = next_packet_id++;
   if (next_packet_id == 0U) next_packet_id = 1;
   size_t n = mqtt_build_subscribe(txbuf, sizeof(txbuf), id, topic, 0);
@@ -308,25 +313,21 @@ funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS)
 
   uint32_t t0 = HAL_GetTick();
   while ((HAL_GetTick() - t0) < T_ACK_MS && !(suback_code >= 0 && suback_id == id)) esp_pump();
-  return (suback_code >= 0 && suback_id == id && suback_code != 0x80) ? funcOk : funcErr;
+  return (suback_code == 0 && suback_id == id) ? funcOk : funcErr;   /* granted QoS must be the requested 0 */
 }
 
 funcState_t MQTT_unsubscribeTopic(char *topic)
 {
-  size_t tlen = strlen(topic);
   uint16_t id = next_packet_id++;
   if (next_packet_id == 0U) next_packet_id = 1;
-  if (tlen == 0U || tlen + 8U > sizeof(txbuf)) return funcErr;
-  size_t body = 2U + 2U + tlen;
-  uint8_t rl[4];
-  size_t rn = mqtt_encode_remaining_length(rl, (uint32_t)body);
-  size_t pos = 0;
-  txbuf[pos++] = 0xA2;                                 /* UNSUBSCRIBE, reserved flags 0010 */
-  memcpy(&txbuf[pos], rl, rn); pos += rn;
-  txbuf[pos++] = (uint8_t)(id >> 8); txbuf[pos++] = (uint8_t)id;
-  txbuf[pos++] = (uint8_t)(tlen >> 8); txbuf[pos++] = (uint8_t)tlen;
-  memcpy(&txbuf[pos], topic, tlen); pos += tlen;
-  return ESP8266_sendMessage(txbuf, (uint16_t)pos);
+  size_t n = mqtt_build_unsubscribe(txbuf, sizeof(txbuf), id, topic);
+  if (n == 0U || !mqtt_connected) return funcErr;
+  unsuback_id = -1;
+  if (ESP8266_sendMessage(txbuf, (uint16_t)n) != funcOk) return funcErr;
+
+  uint32_t t0 = HAL_GetTick();
+  while ((HAL_GetTick() - t0) < T_ACK_MS && unsuback_id != (int32_t)id) esp_pump();
+  return (unsuback_id == (int32_t)id) ? funcOk : funcErr;      /* UNSUBACK for this request */
 }
 
 funcState_t MQTT_disconnectBroker(void)

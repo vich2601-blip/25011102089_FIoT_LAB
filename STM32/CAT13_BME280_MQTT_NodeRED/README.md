@@ -38,7 +38,9 @@ Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883*
 
 Also: PINGREQ waits for PINGRESP (no answer → reconnect), topics that do not fit the buffer are dropped and counted, and the applications print the RX-overflow / dropped-packet counters when they change.
 
-Tested on the PC: `make -C tests` (39 parser checks + 27 ESPLib checks against a simulated ESP8266, including both `AT+CIPSEND` reply styles, a silent broker and a PUBLISH arriving in the middle of a send).
+The client is **QoS 0 only**: publish/subscribe calls asking for QoS 1/2 return `funcErr`, a SUBACK must grant QoS 0, and incoming QoS 1/2 messages (which would need PUBACK) are dropped and counted. UNSUBSCRIBE waits for the matching UNSUBACK.
+
+Tested on the PC: `make -C tests` (45 parser checks + 33 ESPLib checks against a simulated ESP8266, including both `AT+CIPSEND` reply styles, a silent broker, UNSUBACK, the QoS rules and a PUBLISH arriving in the middle of a send).
 
 ---
 

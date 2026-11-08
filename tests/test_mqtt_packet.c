@@ -64,6 +64,10 @@ static void test_subscribe(void)
   const uint8_t expect[] = { 0x82, 8, 0, 7, 0, 3, 't', '/', 'x', 0 };
   CHECK(n == sizeof expect && memcmp(b, expect, n) == 0);
   CHECK(mqtt_build_subscribe(b, sizeof b, 0, "t", 0) == 0);           /* packet id 0 is illegal */
+  n = mqtt_build_unsubscribe(b, sizeof b, 9, "t/x");
+  const uint8_t unsub[] = { 0xA2, 7, 0, 9, 0, 3, 't', '/', 'x' };
+  CHECK(n == sizeof unsub && memcmp(b, unsub, n) == 0);
+  CHECK(mqtt_build_unsubscribe(b, sizeof b, 0, "t") == 0);
 }
 
 static void test_parse_acks(void)
@@ -92,6 +96,12 @@ static void test_parse_acks(void)
   CHECK(feed_all(&p, suback_id0, sizeof suback_id0, &ev) == MQTT_EVT_ERROR);
   const uint8_t suback_bad[] = { 0x90, 0x03, 0x00, 0x09, 0x05 };      /* return code 5 is not allowed */
   CHECK(feed_all(&p, suback_bad, sizeof suback_bad, &ev) == MQTT_EVT_ERROR);
+  const uint8_t unsuback[] = { 0xB0, 0x02, 0x00, 0x09 };
+  CHECK(feed_all(&p, unsuback, sizeof unsuback, &ev) == MQTT_EVT_UNSUBACK && p.id == 9);
+  const uint8_t unsuback_id0[] = { 0xB0, 0x02, 0x00, 0x00 };
+  CHECK(feed_all(&p, unsuback_id0, sizeof unsuback_id0, &ev) == MQTT_EVT_ERROR);
+  const uint8_t unsuback_hdr[] = { 0xB2, 0x02, 0x00, 0x09 };          /* flags must be 0 */
+  CHECK(feed_all(&p, unsuback_hdr, sizeof unsuback_hdr, &ev) == MQTT_EVT_ERROR);
   const uint8_t ping_hdr[] = { 0xD1, 0x00 };                          /* PINGRESP flags must be 0 */
   CHECK(feed_all(&p, ping_hdr, sizeof ping_hdr, &ev) == MQTT_EVT_ERROR);
   const uint8_t dup_q0[] = { 0x38, 0x04, 0x00, 0x01, 'a', 'x' };      /* DUP set on a QoS 0 PUBLISH */
@@ -113,7 +123,9 @@ static void test_parse_publish(void)
 
   /* QoS 1 publish: packet id must be skipped */
   const uint8_t q1[] = { 0x32, 0x09, 0x00, 0x01, 'x', 0x12, 0x34, 'h', 'e', 'y', '!' };
-  CHECK(feed_all(&p, q1, sizeof q1, &ev) == MQTT_EVT_PUBLISH && p.id == 0x1234 && strcmp((const char *)p.payload, "hey!") == 0);
+  CHECK(feed_all(&p, q1, sizeof q1, &ev) == MQTT_EVT_PUBLISH && p.id == 0x1234 && p.qos == 1 && strcmp((const char *)p.payload, "hey!") == 0);
+  const uint8_t q1_id0[] = { 0x32, 0x06, 0x00, 0x01, 'x', 0x00, 0x00, '!' };   /* QoS 1 with packet id 0 */
+  CHECK(feed_all(&p, q1_id0, sizeof q1_id0, &ev) == MQTT_EVT_ERROR);
 
   /* topic length larger than the packet -> rejected, nothing copied */
   const uint8_t lying[] = { 0x30, 0x04, 0x00, 0x50, 'a', 'b' };

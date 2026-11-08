@@ -60,7 +60,8 @@ static uint8_t  raw[512];
 static size_t   raw_len;
 static int      inject_publish_during_send;
 static int      broker_refuses;
-static int      broker_silent;         /* do not answer PINGREQ */
+static int      broker_silent;         /* do not answer PINGREQ / UNSUBSCRIBE */
+static uint8_t  suback_grant;          /* QoS the broker grants in SUBACK */
 static int      cipsend_ok_first = 1;  /* 1: "OK" then ">" (Espressif), 0: only ">" (older firmware) */
 static int      skip_lf;               /* the \n that ends an AT command line */
 
@@ -69,7 +70,8 @@ static void broker_handle(const uint8_t *p, size_t n)
   (void)n;
   uint8_t type = p[0] >> 4;
   if (type == 1) { uint8_t ack[] = { 0x20, 0x02, 0x00, (uint8_t)(broker_refuses ? 5 : 0) }; esp_ipd(ack, sizeof ack); }
-  if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], p[3], 0x00 }; esp_ipd(ack, sizeof ack); }
+  if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], p[3], suback_grant }; esp_ipd(ack, sizeof ack); }
+  if (type == 10 && !broker_silent) { uint8_t ack[] = { 0xB0, 0x02, p[2], p[3] }; esp_ipd(ack, sizeof ack); }
   if (type == 12 && !broker_silent) { uint8_t ack[] = { 0xD0, 0x00 }; esp_ipd(ack, sizeof ack); }
 }
 
@@ -170,6 +172,30 @@ int main(void)
     CHECK(MQTTDataHandler(topic, msg) == 0);
     CHECK(MQTT_droppedMessages() == dropped0 + 1);
   }
+
+  /* QoS 0 only: QoS 1/2 requests are refused, not silently downgraded */
+  CHECK(MQTT_publishTopic("a/data", "x", QoS1) == funcErr);
+  CHECK(MQTT_subscribeTopic("a/led", QoS1) == funcErr);
+
+  /* broker grants QoS 1 for a QoS 0 request -> treated as failure */
+  suback_grant = 1;
+  CHECK(MQTT_subscribeTopic("a/led", QoS0) == funcErr);
+  suback_grant = 0;
+
+  /* incoming QoS 1 PUBLISH (would need a PUBACK) is dropped and counted */
+  {
+    const uint8_t q1[] = { 0x32, 0x0A, 0x00, 0x05, 'a', '/', 'l', 'e', 'd', 0x00, 0x07, 'O', 'N' };
+    uint8_t fixed[sizeof q1]; memcpy(fixed, q1, sizeof q1); fixed[1] = sizeof q1 - 2;
+    uint32_t d0 = MQTT_droppedMessages();
+    esp_ipd(fixed, sizeof fixed); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 0 && MQTT_droppedMessages() == d0 + 1);
+  }
+
+  /* UNSUBSCRIBE waits for the matching UNSUBACK */
+  CHECK(MQTT_unsubscribeTopic("a/led") == funcOk);
+  broker_silent = 1;
+  CHECK(MQTT_unsubscribeTopic("a/led") == funcErr);
+  broker_silent = 0;
 
   CHECK(ESP8266_rxOverflows() == 0);
   printf("ESPLib: %d checks, %d failures\n", checks, failures);

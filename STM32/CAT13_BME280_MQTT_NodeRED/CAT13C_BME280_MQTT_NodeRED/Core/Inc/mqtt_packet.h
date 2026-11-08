@@ -23,6 +23,8 @@
 #define MQTT_PKT_PUBLISH     3U
 #define MQTT_PKT_SUBSCRIBE   8U
 #define MQTT_PKT_SUBACK      9U
+#define MQTT_PKT_UNSUBSCRIBE 10U
+#define MQTT_PKT_UNSUBACK    11U
 #define MQTT_PKT_PINGREQ     12U
 #define MQTT_PKT_PINGRESP    13U
 #define MQTT_PKT_DISCONNECT  14U
@@ -41,6 +43,7 @@ size_t mqtt_build_publish(uint8_t *buf, size_t size, const char *topic,
                           const uint8_t *payload, size_t payload_len, int retain);
 size_t mqtt_build_subscribe(uint8_t *buf, size_t size, uint16_t packet_id,
                             const char *topic, uint8_t qos);
+size_t mqtt_build_unsubscribe(uint8_t *buf, size_t size, uint16_t packet_id, const char *topic);
 size_t mqtt_build_pingreq(uint8_t *buf, size_t size);
 size_t mqtt_build_disconnect(uint8_t *buf, size_t size);
 
@@ -50,7 +53,8 @@ typedef enum
   MQTT_EVT_NONE = 0,
   MQTT_EVT_CONNACK,     /* code = CONNACK return code (0 = accepted)          */
   MQTT_EVT_SUBACK,      /* code = granted QoS, 0x80 = refused; id = packet id */
-  MQTT_EVT_PUBLISH,     /* topic / payload valid                               */
+  MQTT_EVT_PUBLISH,     /* topic / payload valid; qos = delivery QoS           */
+  MQTT_EVT_UNSUBACK,    /* id = packet id                                      */
   MQTT_EVT_PINGRESP,
   MQTT_EVT_OTHER,       /* well-formed packet of another type                  */
   MQTT_EVT_ERROR        /* malformed packet (bad length / field), skipped      */
@@ -70,6 +74,7 @@ typedef struct
 
   /* result of the last completed packet */
   uint8_t  code;
+  uint8_t  qos;              /* PUBLISH: QoS from the fixed header */
   uint16_t id;
   const char    *topic;        /* NUL-terminated copy inside topic_buf */
   const uint8_t *payload;      /* NUL-terminated copy inside payload_buf */

@@ -48,7 +48,8 @@ typedef struct
 #define PasswordFlag   0x40
 #define UserNameFlag   0x80
 
-/* QoS levels: this client publishes and subscribes with QoS 0 */
+/* QoS levels: this client supports QoS 0 only. Publish/subscribe calls with
+   QoS1/QoS2 return funcErr; incoming QoS 1/2 PUBLISH packets are dropped and counted. */
 #define QoS0           0x00
 #define QoS1           0x01
 #define QoS2           0x02
@@ -68,9 +69,9 @@ funcState_t ESP8266_sendMessage(const uint8_t *msg, uint16_t msgSize);
 
 /* --------------------------------------------------------------------- MQTT */
 funcState_t MQTT_connectBroker(MQTT_InitTypeDef_t *MQTTConnect);     /* waits for CONNACK = accepted */
-funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS);    /* sent as QoS 0 */
-funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS);            /* waits for SUBACK */
-funcState_t MQTT_unsubscribeTopic(char *topic);
+funcState_t MQTT_publishTopic(char *topic, char *msg, uint8_t QoS);    /* QoS must be QoS0 */
+funcState_t MQTT_subscribeTopic(char *topic, uint8_t QoS);            /* QoS0; waits for SUBACK granting QoS 0 */
+funcState_t MQTT_unsubscribeTopic(char *topic);                       /* waits for UNSUBACK */
 #define MQTT_unsubsribeTopic MQTT_unsubscribeTopic                     /* spelling used in the course header */
 funcState_t MQTT_disconnectBroker(void);
 funcState_t MQTT_pingReq(void);
