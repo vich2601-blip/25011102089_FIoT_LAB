@@ -30,10 +30,10 @@ Crystal 11.0592 MHz → machine cycle 1.085 µs → Timer 0 → overflow → **i
 **Project folder:** [`Task1_Timer0_Interrupt_1s_LED`](Task1_Timer0_Interrupt_1s_LED/)
 
 ### Working principle
-The Timer-0 ISR (vector 1, register bank 1) reloads 0xFC66 and counts 1 ms ticks. After 1000 ticks it sets `second_flag`; the main loop toggles the LED when it sees the flag. No delay loop is involved in the timing.
+The Timer-0 ISR (vector 1, register bank 1) reloads 0xFC72 (0xFC66 + 12 cycles to make up for the interrupt entry) and counts 1 ms ticks. After 1000 ticks it sets `second_flag`; the main loop toggles the LED when it sees the flag. No delay loop is involved in the timing.
 
 ### Pseudocode
-1. TMOD = Mode 1, load 0xFC66, ET0 = EA = TR0 = 1.
+1. TMOD = Mode 1, load 0xFC72, ET0 = EA = TR0 = 1.
 2. ISR: reload, `++ms_ticks`; at 1000 set `second_flag`.
 3. Main: if `second_flag`, clear it and toggle P1.1.
 
@@ -80,7 +80,7 @@ The ISR toggles P1.1, so the frequency depends only on the reload value: half-pe
 | 4 | 2 kHz | 230 | 0xFF1A |
 | 5 | 5 kHz | 92 | 0xFFA4 |
 
-`ISR_LATENCY` adds back the cycles between overflow and reload.
+The table shows the ideal reload. The code adds `ISR_LATENCY` (12 cycles) to it, because the timer only restarts once the ISR has reloaded it: reload = 65536 − N + 12. When the mode changes, Timer 0 is stopped, reloaded and restarted so the new frequency starts immediately. Measured in uCsim: mode 1 = 100.2 Hz.
 
 ### Pseudocode
 1. Compute reload = 65536 − N + ISR_LATENCY for the mode.

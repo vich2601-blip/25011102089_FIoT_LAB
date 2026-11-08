@@ -6,7 +6,7 @@
 | Date | 27/10 (Week 13) |
 | Experiment name | BME280 Sensor Interfacing Using I²C and MQTT using Custom Built ESP8266 API |
 | Platform | NUCLEO-F401RE (STM32F401RET6, Cortex-M4F, 84 MHz) + BME280 + Wemos D1 mini |
-| Tools | STM32CubeMX + STM32CubeIDE, STM32 HAL, ESPLib (course MQTT library), Node-RED, broker.emqx.io |
+| Tools | STM32CubeMX + STM32CubeIDE, STM32 HAL, ESPLib API (reworked implementation), Node-RED, broker.emqx.io |
 
 ## Circuit Diagram
 
@@ -27,7 +27,16 @@ Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883*
 | `MQTT_publishTopic()` | PUBLISH 0x30, topic length, topic, payload |
 | `MQTT_subscribeTopic()` | SUBSCRIBE 0x82 |
 
-**Library fixes in this copy:** the UART handle is stored as a pointer (the original kept a copy, so RX interrupts on `huart1` never completed and subscribe could not work); the RX buffer index wraps at `BUFFERSIZE` instead of 300 (buffer overflow); `BUFFERSIZE` raised to 200 so the JSON packet fits.
+**Reworked library.** `ESPLib.h` keeps the course function names, so the lab-sheet code compiles unchanged, but `ESPLib.c` + `mqtt_packet.c` are a new implementation:
+
+| Problem in the original | Now |
+|---|---|
+| RX interrupt aborted during every send, so packets arriving meanwhile were lost | RX interrupt armed once and never aborted; 1 KB ring buffer |
+| Packet end guessed from 100 ms of UART silence; `colonIndex` could be used uninitialised (SUBACK / PINGRESP have no `:` structure) | `+IPD,<len>:` framing removed, then a byte-wise MQTT parser using the packet type and Remaining Length |
+| 1-byte Remaining Length only, lengths and destination sizes not checked, strings not always terminated | Remaining Length up to 4 bytes, every length validated before copying, output always NUL-terminated, oversized packets skipped |
+| CONNACK / SUBACK never checked; `do {} while` loops could hang forever | CONNECT waits for CONNACK = accepted, SUBSCRIBE for SUBACK ≠ 0x80; every wait has a timeout and returns `funcOk` / `funcErr` |
+
+Tested on the PC: `make -C tests` (30 parser checks + 16 ESPLib checks against a simulated ESP8266, including a PUBLISH arriving in the middle of a send).
 
 ---
 
@@ -36,7 +45,7 @@ Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883*
 **Project folder:** [`CAT13A_MQTT_Publish_Test`](CAT13A_MQTT_Publish_Test/)
 
 ### Working principle
-ESPLib joins Wi-Fi, opens TCP to the broker and sends CONNECT (keep-alive 500 s, clean session). Then `hello #n from STM32 Nucleo` is published to `vishrudh/stm32/test` every second.
+ESPLib joins Wi-Fi, opens TCP to the broker and sends CONNECT (keep-alive 120 s, clean session), then waits for CONNACK and only continues if the broker accepted the connection; if anything fails it retries every 5 s, and it reconnects if the link drops. Then `hello #n from STM32 Nucleo` is published to `vishrudh/stm32/test` every second.
 
 ### Pseudocode
 1. `mqtt_start()`: Init → wifiConnect → portConnect → connectBroker.
@@ -47,7 +56,7 @@ ESPLib joins Wi-Fi, opens TCP to the broker and sends CONNECT (keep-alive 500 s,
 
 ### Expected output
 ```
-MQTT connected as stm32-vishrudh-test
+MQTT connected (CONNACK accepted) as stm32-vishrudh-test
 PUB vishrudh/stm32/test : hello #1 from STM32 Nucleo
 ```
 
@@ -61,7 +70,9 @@ MQTT runs on top of the ESP8266 TCP link; the STM32 only has to frame the packet
 **Project folder:** [`CAT13B_MQTT_Subscribe_LED_Control`](CAT13B_MQTT_Subscribe_LED_Control/)
 
 ### Working principle
-After CONNECT the board subscribes to `vishrudh/stm32/led` and starts the RX interrupt. `MQTTTimer()` in `SysTick_Handler` marks a packet complete after 100 ms of silence; `MQTTDataHandler()` extracts topic and message. `ON` / `OFF` / `TOGGLE` drive LD2. PINGREQ every 60 s keeps the session alive.
+After CONNACK the board subscribes to `vishrudh/stm32/led` and checks the SUBACK. `MQTTDataHandler()` returns 1 when a complete, validated PUBLISH has arrived. Only the exact commands `ON` / `OFF` / `TOGGLE` act on LD2; anything else is ignored. PINGREQ every 60 s keeps the session alive. `MQTTTimer()` is still called from `SysTick_Handler` (the lab-sheet hook) but is no longer needed.
+
+> **Security note:** broker.emqx.io is a public test broker — anyone who knows the topic can publish to it. For anything beyond a lab demo, use a private broker with a login: define `MQTT_USERNAME` / `MQTT_PASSWORD` in `wifi_secrets.h` and the client sends them in CONNECT.
 
 ### Pseudocode
 1. LD2 init, `mqtt_start()`, `MQTT_subscribeTopic()`, `HAL_UART_Receive_IT()`.
@@ -69,7 +80,7 @@ After CONNECT the board subscribes to `vishrudh/stm32/led` and starts the RX int
 3. Every 60 s `MQTT_pingReq()`.
 
 ### Code base
-- `stm32f4xx_it.c` — `MQTTTimer()` in SysTick USER CODE
+- `subscribe_commands()` — SUBSCRIBE + SUBACK check; reconnect + resubscribe in the main loop
 - `handle_message()`
 
 ### Inference

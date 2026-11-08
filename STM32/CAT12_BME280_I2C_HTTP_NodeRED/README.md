@@ -82,7 +82,7 @@ Connection: close
 
 {"status":"success","temperature":28.45,"humidity":62.30,"pressure":1008.72}
 ```
-Sensor reads happen every 2 s from time stamps, so the server is never blocked.
+Sensor reads happen every 2 s from time stamps rather than a delay. Sending a response is still a blocking AT+CIPSEND exchange (bounded by timeouts, a few tens of ms), so requests are served one after another.
 
 ### Pseudocode
 1. Initialise the BME280.

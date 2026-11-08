@@ -26,7 +26,7 @@
 **Project folder:** [`.`](./)
 
 ### Working principle
-The system is a state machine in `mode`. `leds_write(pattern)` writes a 4-bit pattern (bit 3 = LED1 … bit 0 = LED4) so every mode only has to compute a pattern. `button_pressed_event()` accepts a level change only if it is still present 20 ms later and reports only the released → pressed edge, so one press gives exactly one transition. The loop runs every 10 ms and the pattern steps every 300 ms, so the button stays responsive.
+The system is a state machine in `mode`. `leds_write(pattern)` writes a 4-bit pattern (bit 3 = LED1 … bit 0 = LED4) so every mode only has to compute a pattern. `button_pressed_event()` is called once per 10 ms loop and accepts a level change only after it has been seen in 2 consecutive samples (20 ms) — no delay inside the debounce — and reports only the released → pressed edge, so one press gives exactly one transition. The pattern steps every 300 ms, so the button stays responsive.
 
 | Mode | LED1 LED2 LED3 LED4 |
 |---|---|

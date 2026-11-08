@@ -114,4 +114,4 @@ Got 5 chars: hello
 ```
 
 ### Inference
-With interrupt-driven reception no character is lost while the CPU is busy, and the application reads data whenever it is ready.
+With interrupt-driven reception the main program can be busy for up to 15 character times (≈ 15 ms at 9600 baud) without losing data; beyond that the 16-byte buffer is full and further bytes are dropped and counted (`uart_overflows()`, printed after each line).

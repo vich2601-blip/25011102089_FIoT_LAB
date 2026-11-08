@@ -76,7 +76,7 @@ The LED toggles once per valid press and remembers its state until the next pres
 | 0.6 – 3 s | long | blink mode ON/OFF |
 | ≥ 3 s | very long | reset (LED off, blink off) |
 
-Unsigned subtraction `now - press_start` stays correct across tick wrap-around.
+Unsigned subtraction `now - press_start` stays correct across tick wrap-around. The press type is decided **on release**, so the action happens when the button is let go.
 
 ### Pseudocode
 1. Press edge → store start.

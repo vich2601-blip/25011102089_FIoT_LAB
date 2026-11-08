@@ -73,7 +73,7 @@ Each press toggles the LED exactly once; bounce is filtered without any blocking
 **Project folder:** [`CAT08C_Short_vs_Long_Press`](CAT08C_Short_vs_Long_Press/)
 
 ### Working principle
-Press edge → record start time → keep running → release edge → duration = release − start → classify. < 1 s is short, ≥ 1 s is long.
+Press edge → record start time → keep running → release edge → duration = release − start → classify. < 1 s is short, ≥ 1 s is long. The press is classified **when the button is released**, so blinking starts on release of a long press, not after 1 s of holding.
 
 | Action | Response |
 |---|---|

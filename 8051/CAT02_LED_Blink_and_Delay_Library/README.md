@@ -82,7 +82,7 @@ The LED blinks at about 1 Hz using only direct SFR access and a software loop.
 **Project folder:** [`Task3_Custom_Delay_Library`](Task3_Custom_Delay_Library/)
 
 ### Working principle
-The delay is moved into `delay.h` / `delay.c`. `delay_ms(n)` repeats a ~1 ms block (two DJNZ loops of 228 passes + overhead = 12 + 4 × 228 = 924 cycles ≈ 1.003 ms). `delay_50us()` is added for short device timings (used later by the LCD driver).
+The delay is moved into `delay.h` / `delay.c`. `delay_ms(n)` repeats a ~1 ms block: two loops of 50 passes with a `volatile` counter (9 cycles per pass, so no optimiser can remove them) + overhead = 22 + 18 × 50 = 922 cycles ≈ 1.000 ms (measured in the uCsim simulator; check once under Keil, whose code may differ by a few percent). `delay_50us()` is added for short device timings (used later by the LCD driver).
 
 ### Pseudocode
 1. Declare `delay_ms()` and `delay_50us()` in `delay.h`.
