@@ -14,21 +14,25 @@ static int failures = 0, checks = 0;
 
 /* ------------------------------------------------------------- fake time */
 static uint32_t now_ms;
-uint32_t HAL_GetTick(void) { return now_ms += 1; }      /* time advances while polling */
+static void deliver_all(void);
+uint32_t HAL_GetTick(void) { deliver_all(); return now_ms += 1; }   /* time passing lets queued bytes arrive */      /* time advances while polling */
 void HAL_Delay(uint32_t ms) { now_ms += ms; }
 
 /* ------------------------------------------------------------- fake UART */
 static UART_HandleTypeDef huart1;
 static uint8_t *rx_target;
 static int rx_armed;
+static int fail_arm;                    /* fault injection: refuse this many re-arms */
 
 /* bytes waiting to be "received" (delivered one by one through the RX interrupt) */
 static uint8_t pending[4096];
 static size_t pend_head, pend_tail;
 
+HAL_StatusTypeDef HAL_UART_AbortReceive(UART_HandleTypeDef *h) { (void)h; rx_armed = 0; return HAL_OK; }
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *h, uint8_t *d, uint16_t n)
 {
   (void)h; (void)n;
+  if (fail_arm > 0) { fail_arm--; return HAL_BUSY; }
   if (rx_armed) return HAL_BUSY;
   rx_target = d; rx_armed = 1;
   return HAL_OK;
@@ -259,6 +263,17 @@ int main(void)
   CHECK(MQTT_subscribeTopic(NULL, QoS0) == funcErr && MQTT_unsubscribeTopic("") == funcErr);
   CHECK(MQTT_connectBroker(NULL) == funcErr && MQTT_getMessage(NULL, 4, msg, 4) == 0);
   CHECK(ESP8266_sendMessage(NULL, 4) == funcErr && ESP8266_txErrors() == 0);
+
+  /* fault injection: malformed +IPD frame -> full recovery, then a clean reconnect */
+  esp_says_str("\r\n+IPD,0:"); esp_says("\x30\x02\x00\x01", 4); deliver_all();
+  CHECK(!MQTT_isConnected());
+  CHECK(ESP8266_portConnect("TCP", "broker", "1883") == funcOk && MQTT_connectBroker(&cfg) == funcOk);
+
+  /* fault injection: HAL refuses one RX re-arm; ESPLib retries and keeps working */
+  fail_arm = 1;
+  { const uint8_t ping[] = { 0xD0, 0x00 }; esp_ipd(ping, sizeof ping); deliver_all(); }
+  CHECK(MQTT_pingReq() == funcOk);
+  CHECK(ESP8266_rearmFailures() == 1);
 
   printf("ESPLib: %d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;

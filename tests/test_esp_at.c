@@ -10,15 +10,18 @@ static int failures = 0, checks = 0;
 #define CHECK(cond) do { checks++; if (!(cond)) { failures++; printf("  FAIL %s:%d  %s\n", __FILE__, __LINE__, #cond); } } while (0)
 
 static uint32_t now_ms;
-uint32_t HAL_GetTick(void) { return now_ms += 1; }
+static void deliver_all(void);
+uint32_t HAL_GetTick(void) { deliver_all(); return now_ms += 1; }   /* time passing lets queued bytes arrive */
 void HAL_Delay(uint32_t ms) { now_ms += ms; }
 
 static UART_HandleTypeDef huart1;
 static uint8_t *rx_target; static int rx_armed;
+static int fail_arm;                    /* fault injection: refuse this many re-arms */
 static uint8_t pending[4096]; static size_t pend_head, pend_tail;
 
+HAL_StatusTypeDef HAL_UART_AbortReceive(UART_HandleTypeDef *h) { (void)h; rx_armed = 0; return HAL_OK; }
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *h, uint8_t *d, uint16_t n)
-{ (void)h; (void)n; if (rx_armed) return HAL_BUSY; rx_target = d; rx_armed = 1; return HAL_OK; }
+{ (void)h; (void)n; if (fail_arm > 0) { fail_arm--; return HAL_BUSY; } if (rx_armed) return HAL_BUSY; rx_target = d; rx_armed = 1; return HAL_OK; }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *h) { esp_at_rx_cplt_callback(h); }
 
 static void deliver_all(void)
@@ -119,6 +122,25 @@ int main(void)
   CHECK(esp_at_read_line(line, 0, 10) == -1);
   CHECK(esp_at_send(0, NULL, 5) == 0 && esp_at_send(0, "x", 0) == 0);
   CHECK(esp_at_tx_errors() == 0);
+
+  /* fault injection: HAL refuses one RX re-arm; the driver notices and retries */
+  fail_arm = 1;
+  esp_says("noise\r\n"); deliver_all();                       /* callback re-arm fails here */
+  CHECK(esp_at_cmd("AT", NULL, 0, 1000) == ESP_OK);            /* reception restarted, reply seen */
+  CHECK(esp_at_rearm_failures() == 1);
+
+  /* caller's buffer too small: full length returned so the cut is visible */
+  {
+    char small[4];
+    esp_says("OK123456\r\n"); deliver_all();
+    CHECK(esp_at_read_line(small, sizeof small, 10) == 8 && strcmp(small, "OK1") == 0);
+  }
+  CHECK(esp_at_cmd(NULL, NULL, 0, 10) == ESP_ERROR);
+
+  /* re-initialising resets state and counters */
+  esp_at_init(&huart1, on_urc);
+  CHECK(esp_at_overflow_count() == 0 && esp_at_truncated_lines() == 0 && esp_at_rearm_failures() == 0);
+  CHECK(esp_at_cmd("AT", NULL, 0, 1000) == ESP_OK);
 
   printf("esp_at: %d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;

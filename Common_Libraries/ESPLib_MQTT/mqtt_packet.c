@@ -139,6 +139,7 @@ enum { ST_HEADER = 0, ST_LENGTH, ST_BODY };
 
 void mqtt_parser_init(mqtt_parser_t *p)
 {
+  if (p == NULL) return;
   memset(p, 0, sizeof(*p));
   p->state = ST_HEADER;
   p->topic = p->topic_buf;
@@ -228,6 +229,7 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
 
 mqtt_event_t mqtt_parser_feed(mqtt_parser_t *p, uint8_t byte)
 {
+  if (p == NULL) return MQTT_EVT_ERROR;
   switch (p->state)
   {
     case ST_HEADER:

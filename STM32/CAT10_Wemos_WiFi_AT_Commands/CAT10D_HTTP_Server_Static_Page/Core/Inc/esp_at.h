@@ -32,7 +32,8 @@ void         esp_at_error_callback(UART_HandleTypeDef *huart);     /* call from 
 
 esp_result_t esp_at_startup(void);                                  /* AT handshake + ATE0              */
 esp_result_t esp_at_cmd(const char *cmd, char *resp, uint16_t resp_size, uint32_t timeout_ms);
-int          esp_at_read_line(char *out, uint16_t size, uint32_t timeout_ms); /* -1 = timeout       */
+int          esp_at_read_line(char *out, uint16_t size, uint32_t timeout_ms); /* line length, -1 = timeout;
+                                                                              a result >= size means "out" was cut */
 void         esp_at_flush(void);
 
 esp_result_t esp_at_join_ap(const char *ssid, const char *password);
@@ -44,5 +45,6 @@ esp_result_t esp_at_close(uint8_t link);
 uint32_t     esp_at_overflow_count(void);   /* bytes lost: RX ring buffer full          */
 uint32_t     esp_at_truncated_lines(void);  /* lines longer than ESP_LINE_MAX - 1, cut   */
 uint32_t     esp_at_tx_errors(void);        /* HAL_UART_Transmit failures                */
+uint32_t     esp_at_rearm_failures(void);   /* RX interrupt re-arm refused (then retried) */
 
 #endif /* ESP_AT_H */

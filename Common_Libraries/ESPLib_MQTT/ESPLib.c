@@ -60,6 +60,17 @@ static uint32_t msg_dropped;
 /* ========================================================================== */
 /*  Interrupt side                                                            */
 /* ========================================================================== */
+static volatile uint8_t  rx_armed;
+static volatile uint32_t rearm_failures;
+
+/* (Re)arm reception; if HAL refuses, esp_pump() retries from the main context */
+static void rx_arm(void)
+{
+  rx_armed = (HAL_UART_Receive_IT(esp_uart, &uartRxData, 1) == HAL_OK);
+  if (!rx_armed)
+    rearm_failures++;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart != esp_uart)
@@ -67,7 +78,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   uint16_t next = (uint16_t)((ring_head + 1U) & RING_MASK);
   if (next != ring_tail) { ring[ring_head] = uartRxData; ring_head = next; }
   else ring_overflows++;
-  HAL_UART_Receive_IT(esp_uart, &uartRxData, 1);          /* stay armed */
+  rx_arm();                                               /* stay armed */
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
@@ -75,7 +86,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   if (huart != esp_uart)
     return;
   __HAL_UART_CLEAR_OREFLAG(huart);
-  HAL_UART_Receive_IT(esp_uart, &uartRxData, 1);
+  rx_arm();
 }
 
 /* ========================================================================== */
@@ -151,22 +162,32 @@ static uint32_t ipd_length(void)
 /* If the ring buffer overflowed, bytes are missing from the stream: the +IPD
    framing and the MQTT parser can no longer be trusted. Reset both and mark
    the session down so the application reconnects cleanly. */
-static void check_overflow(void)
+static uint32_t overflow_seen = 0;
+
+/* Bytes are missing or framing is broken: drop everything buffered, reset the
+   parser and force a full TCP + MQTT reconnect. */
+static void full_recovery(void)
 {
-  static uint32_t seen = 0;
-  if (ring_overflows == seen)
-    return;
-  seen = ring_overflows;
-  ring_tail = ring_head;            /* buffered bytes belong to the broken stream: discard them */
+  ring_tail = ring_head;
   line_len = 0;
   ipd_left = 0;
   mqtt_parser_init(&parser);
   mqtt_connected = false;
-  tcp_connected = false;            /* force a full TCP + MQTT reconnect, not just a new CONNECT */
+  tcp_connected = false;
+}
+
+static void check_overflow(void)
+{
+  if (ring_overflows == overflow_seen)
+    return;
+  overflow_seen = ring_overflows;
+  full_recovery();
 }
 
 static void esp_pump(void)
 {
+  if (!rx_armed && esp_uart != NULL)       /* reception stopped: restart it */
+    rx_arm();
   check_overflow();
   while (ring_tail != ring_head)
   {
@@ -191,10 +212,10 @@ static void esp_pump(void)
       line[line_len] = '\0';
       ipd_left = ipd_length();
       line_len = 0;
-      if (ipd_left == 0U || ipd_left > 2048U)       /* malformed frame: drop parser state */
+      if (ipd_left == 0U || ipd_left > 2048U)       /* malformed frame: same full recovery as an overflow */
       {
-        ipd_left = 0;
-        mqtt_parser_init(&parser);
+        full_recovery();
+        return;
       }
       continue;
     }
@@ -242,8 +263,11 @@ funcState_t ESP8266_InitPtr(espMode_t mode, UART_HandleTypeDef *huart)
   if (huart == NULL) return funcErr;
   esp_uart = huart;
   ring_head = ring_tail = 0; line_len = 0; ipd_left = 0;
+  ring_overflows = 0; overflow_seen = 0; rearm_failures = 0; tx_errors = 0; msg_dropped = 0;
+  msg_pending = false; tcp_connected = false; mqtt_connected = false;
   mqtt_parser_init(&parser);
-  HAL_UART_Receive_IT(esp_uart, &uartRxData, 1);
+  HAL_UART_AbortReceive(esp_uart);          /* cancel a reception still armed from before */
+  rx_arm();
 
   HAL_Delay(500);                                     /* let boot messages arrive */
   funcState_t ok = funcErr;
@@ -307,6 +331,7 @@ funcState_t ESP8266_sendMessage(const uint8_t *msg, uint16_t msgSize)
 
 uint32_t ESP8266_rxOverflows(void) { return ring_overflows; }
 uint32_t ESP8266_txErrors(void)    { return tx_errors; }
+uint32_t ESP8266_rearmFailures(void) { return rearm_failures; }
 
 /* ========================================================================== */
 /*  MQTT                                                                      */

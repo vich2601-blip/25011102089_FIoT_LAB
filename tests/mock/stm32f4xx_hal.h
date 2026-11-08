@@ -9,6 +9,7 @@ typedef struct { int id; } UART_HandleTypeDef;
 
 HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *h, uint8_t *d, uint16_t n, uint32_t t);
 HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *h, uint8_t *d, uint16_t n);
+HAL_StatusTypeDef HAL_UART_AbortReceive(UART_HandleTypeDef *h);
 uint32_t HAL_GetTick(void);
 void     HAL_Delay(uint32_t ms);
 #define  __HAL_UART_CLEAR_OREFLAG(h) ((void)(h))

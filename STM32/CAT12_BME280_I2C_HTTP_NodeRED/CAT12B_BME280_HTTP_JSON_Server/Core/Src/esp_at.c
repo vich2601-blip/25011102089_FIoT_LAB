@@ -27,6 +27,24 @@ static uint16_t line_len = 0;
 /* ------------------------------------------------------------------ */
 /*  Interrupt side                                                     */
 /* ------------------------------------------------------------------ */
+static uint32_t truncated_lines = 0;
+static uint32_t tx_errors = 0;
+static uint8_t  line_cut = 0;          /* current line exceeded the buffer */
+static uint8_t  skip_to_eol = 0;       /* after an overflow: ignore input up to the next line break */
+static uint32_t overflow_seen = 0;
+
+/* (Re)arm one-byte interrupt reception and remember whether HAL accepted it.
+   If it refused (e.g. busy after an error), the main context retries later. */
+static volatile uint8_t  rx_armed = 0;
+static volatile uint32_t rearm_failures = 0;
+
+static void rx_arm(void)
+{
+  rx_armed = (HAL_UART_Receive_IT(esp_uart, &rx_byte, 1) == HAL_OK);
+  if (!rx_armed)
+    rearm_failures++;
+}
+
 void esp_at_rx_cplt_callback(UART_HandleTypeDef *huart)
 {
   if (huart != esp_uart)
@@ -42,7 +60,7 @@ void esp_at_rx_cplt_callback(UART_HandleTypeDef *huart)
   {
     ring_overflows++;                       /* buffer full: byte dropped */
   }
-  HAL_UART_Receive_IT(esp_uart, &rx_byte, 1);  /* re-arm for the next byte */
+  rx_arm();                                 /* re-arm for the next byte */
 }
 
 void esp_at_error_callback(UART_HandleTypeDef *huart)
@@ -50,7 +68,7 @@ void esp_at_error_callback(UART_HandleTypeDef *huart)
   if (huart != esp_uart)
     return;
   __HAL_UART_CLEAR_OREFLAG(huart);          /* overrun: clear and keep going */
-  HAL_UART_Receive_IT(esp_uart, &rx_byte, 1);
+  rx_arm();
 }
 
 /* ------------------------------------------------------------------ */
@@ -58,6 +76,8 @@ void esp_at_error_callback(UART_HandleTypeDef *huart)
 /* ------------------------------------------------------------------ */
 static int ring_pop(uint8_t *c)
 {
+  if (!rx_armed && esp_uart != NULL)        /* reception stopped: try to restart it */
+    rx_arm();
   if (ring_head == ring_tail)
     return 0;
   *c = ring[ring_tail];
@@ -65,10 +85,6 @@ static int ring_pop(uint8_t *c)
   return 1;
 }
 
-static uint32_t truncated_lines = 0;
-static uint32_t tx_errors = 0;
-static uint8_t  line_cut = 0;          /* current line exceeded the buffer */
-static uint8_t  skip_to_eol = 0;       /* after an overflow: ignore input up to the next line break */
 
 static int uart_write(const char *s, uint16_t len)
 {
@@ -86,10 +102,9 @@ static int uart_write(const char *s, uint16_t len)
    Returns 1 if an overflow was handled. */
 static int resync_after_overflow(void)
 {
-  static uint32_t seen = 0;
-  if (ring_overflows == seen)
+  if (ring_overflows == overflow_seen)
     return 0;
-  seen = ring_overflows;
+  overflow_seen = ring_overflows;
   ring_tail = ring_head;
   line_len = 0;
   line_cut = 0;
@@ -99,11 +114,24 @@ static int resync_after_overflow(void)
 
 void esp_at_init(UART_HandleTypeDef *huart, esp_urc_handler_t urc_handler)
 {
-  esp_uart  = huart;
-  urc_cb    = urc_handler;
-  ring_head = ring_tail = 0;
-  line_len  = 0;
-  HAL_UART_Receive_IT(esp_uart, &rx_byte, 1);
+  /* full reset, so re-initialising starts from a clean state */
+  esp_uart        = huart;
+  urc_cb          = urc_handler;
+  ring_head       = ring_tail = 0;
+  ring_overflows  = 0;
+  overflow_seen   = 0;
+  line_len        = 0;
+  line_cut        = 0;
+  skip_to_eol     = 0;
+  truncated_lines = 0;
+  tx_errors       = 0;
+  rearm_failures  = 0;
+  rx_armed        = 0;
+  if (esp_uart != NULL)
+  {
+    HAL_UART_AbortReceive(esp_uart);   /* cancel a reception still armed from before */
+    rx_arm();
+  }
 }
 
 void esp_at_flush(void)
@@ -116,6 +144,7 @@ void esp_at_flush(void)
 uint32_t esp_at_overflow_count(void)  { return ring_overflows; }
 uint32_t esp_at_truncated_lines(void) { return truncated_lines; }
 uint32_t esp_at_tx_errors(void)       { return tx_errors; }
+uint32_t esp_at_rearm_failures(void)  { return rearm_failures; }
 
 /* Move bytes from the ring into line_acc; returns 1 when a full line is ready */
 /* Add one received character to the line being assembled.
@@ -149,6 +178,8 @@ static int line_feed(uint8_t c)
   return 0;
 }
 
+/* Returns the full length of the next complete line (0 = none yet). The copy
+   in 'out' is NUL-terminated and cut to size - 1 if the caller's buffer is smaller. */
 static int poll_line(char *out, uint16_t size)
 {
   uint8_t c;
@@ -161,7 +192,7 @@ static int poll_line(char *out, uint16_t size)
     {
       strncpy(out, line_acc, size - 1U);
       out[size - 1U] = '\0';
-      return 1;
+      return (int)strlen(line_acc);
     }
   }
   return 0;
@@ -183,14 +214,15 @@ int esp_at_read_line(char *out, uint16_t size, uint32_t timeout_ms)
   uint32_t start = HAL_GetTick();
   do
   {
-    while (poll_line(out, size))
+    int n;
+    while ((n = poll_line(out, size)) > 0)
     {
       if (is_unsolicited(out) && urc_cb != NULL)
       {
         urc_cb(out);          /* hand it to the application, keep waiting */
         continue;
       }
-      return (int)strlen(out);
+      return n;                        /* full length: n >= size means "out" was cut */
     }
   } while ((HAL_GetTick() - start) < timeout_ms);
   return -1;
@@ -201,6 +233,8 @@ esp_result_t esp_at_cmd(const char *cmd, char *resp, uint16_t resp_size, uint32_
   char     line[ESP_LINE_MAX];
   uint32_t start = HAL_GetTick();
 
+  if (cmd == NULL || esp_uart == NULL)
+    return ESP_ERROR;
   if (resp != NULL && resp_size > 0)
     resp[0] = '\0';
 

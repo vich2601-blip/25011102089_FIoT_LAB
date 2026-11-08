@@ -39,7 +39,8 @@ After a 2 s boot wait the STM32 sends `AT`, collects reply lines until `OK`/`ERR
 2. `esp_startup()`: wait, retry `AT` up to 3 times, `ATE0`.
 3. `at_show("AT")` → prints `>> AT`, `<< OK`.
 4. `at_bridge_start()`: both UARTs switch to interrupt-driven receive, each into its own ring buffer (256 slots, 255 usable bytes); if re-arming the receive interrupt ever fails, the main loop retries it.
-5. Loop: `at_bridge_poll()` forwards everything that has arrived in batches (CR from PuTTY → CR LF to the ESP) and reports lost bytes and transmit failures, so typing and long ESP replies do not drop characters.
+5. Sending is interrupt-driven too: each direction has a 512-slot transmit ring (511 usable bytes) sent with `HAL_UART_Transmit_IT`, so forwarding never blocks the loop; a full transmit ring is counted separately from receive overflows.
+6. Loop: `at_bridge_poll()` forwards everything that has arrived in batches (CR from PuTTY → CR LF to the ESP) and reports lost bytes and transmit failures, so typing and long ESP replies do not drop characters.
 
 ### Code base
 - `esp_read_line()` — line reader with timeout

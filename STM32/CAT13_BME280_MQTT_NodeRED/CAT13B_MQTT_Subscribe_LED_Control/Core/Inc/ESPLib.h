@@ -88,6 +88,7 @@ void MQTTTimer(void);
 /* Diagnostics */
 uint32_t ESP8266_rxOverflows(void);     /* bytes lost because the ring buffer was full */
 uint32_t ESP8266_txErrors(void);        /* HAL_UART_Transmit failures */
+uint32_t ESP8266_rearmFailures(void);   /* RX interrupt re-arm refused (then retried) */
 uint32_t MQTT_droppedMessages(void);    /* PUBLISH packets dropped (not collected in time / malformed) */
 
 #endif /* INC_ESPLIB_H_ */

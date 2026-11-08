@@ -229,16 +229,72 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   else if (huart == PC_UART) bridge_arm(PC_UART,  &from_pc);
 }
 
-static void bridge_send(UART_HandleTypeDef *huart, uint8_t *d, uint16_t n)
+/* ---- transmit side: one ring per UART, sent by interrupt (never blocks) ---- */
+#define TX_RING       512U                       /* power of two; 511 usable bytes */
+typedef struct
 {
-  if (HAL_UART_Transmit(huart, d, n, 100) != HAL_OK)
+  uint8_t           buf[TX_RING];
+  volatile uint16_t head, tail;                  /* head: main, tail: TX-complete ISR */
+  volatile uint16_t inflight;                    /* bytes handed to HAL_UART_Transmit_IT */
+  volatile uint8_t  busy;
+  volatile uint32_t dropped;                     /* bytes not queued: TX ring full */
+} tx_ring_t;
+
+static tx_ring_t to_pc, to_esp;
+
+static tx_ring_t *tx_ring_for(UART_HandleTypeDef *huart)
+{
+  return (huart == ESP_UART) ? &to_esp : &to_pc;
+}
+
+/* Start sending the next contiguous block, if idle. Called with interrupts
+   masked from the main loop, or from the TX-complete interrupt. */
+static void tx_kick(UART_HandleTypeDef *huart, tx_ring_t *r)
+{
+  if (r->busy || r->head == r->tail)
+    return;
+  uint16_t end = (r->head > r->tail) ? r->head : TX_RING;    /* up to head, or to the wrap point */
+  uint16_t len = (uint16_t)(end - r->tail);
+  r->inflight = len;
+  r->busy = 1;
+  if (HAL_UART_Transmit_IT(huart, &r->buf[r->tail], len) != HAL_OK)
+  {
+    r->busy = 0;                                 /* retried on the next bridge_send / poll */
     tx_failures++;
+  }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (!bridge_on) return;
+  tx_ring_t *r = tx_ring_for(huart);
+  r->tail = (uint16_t)((r->tail + r->inflight) & (TX_RING - 1U));
+  r->busy = 0;
+  tx_kick(huart, r);
+}
+
+/* Queue bytes for sending; never waits. Bytes that do not fit are counted. */
+static void bridge_send(UART_HandleTypeDef *huart, const uint8_t *d, uint16_t n)
+{
+  tx_ring_t *r = tx_ring_for(huart);
+  for (uint16_t i = 0; i < n; i++)
+  {
+    uint16_t next = (uint16_t)((r->head + 1U) & (TX_RING - 1U));
+    if (next == r->tail) { r->dropped += (uint32_t)(n - i); break; }
+    r->buf[r->head] = d[i];
+    r->head = next;
+  }
+  __disable_irq();
+  tx_kick(huart, r);
+  __enable_irq();
 }
 
 static void at_bridge_start(void)
 {
   memset((void *)&from_pc, 0, sizeof(from_pc));
   memset((void *)&from_esp, 0, sizeof(from_esp));
+  memset((void *)&to_pc, 0, sizeof(to_pc));
+  memset((void *)&to_esp, 0, sizeof(to_esp));
   bridge_on = 1;
   __HAL_UART_CLEAR_OREFLAG(ESP_UART);
   bridge_arm(ESP_UART, &from_esp);
@@ -252,6 +308,11 @@ static void at_bridge_poll(void)
   /* re-arm reception if an earlier attempt was refused */
   if (!from_esp.armed) bridge_arm(ESP_UART, &from_esp);
   if (!from_pc.armed)  bridge_arm(PC_UART,  &from_pc);
+  /* restart transmission if an earlier start was refused */
+  __disable_irq();
+  tx_kick(PC_UART, &to_pc);
+  tx_kick(ESP_UART, &to_esp);
+  __enable_irq();
   uint8_t chunk[64];
   uint8_t out[2 * sizeof(chunk)];
   uint16_t n, i, m;
@@ -273,13 +334,17 @@ static void at_bridge_poll(void)
     bridge_send(ESP_UART, out, m);
   }
 
-  if (from_pc.lost + from_esp.lost + tx_failures != reported)
+  uint32_t total = from_pc.lost + from_esp.lost + to_pc.dropped + to_esp.dropped + tx_failures;
+  if (total != reported)
   {
-    char msg[96];
-    reported = from_pc.lost + from_esp.lost + tx_failures;
-    snprintf(msg, sizeof(msg), "\r\n[bridge] bytes lost: PC->ESP %lu, ESP->PC %lu; transmit failures: %lu\r\n",
-             (unsigned long)from_pc.lost, (unsigned long)from_esp.lost, (unsigned long)tx_failures);
-    pc_print(msg);
+    char msg[128];
+    reported = total;
+    int len = snprintf(msg, sizeof(msg),
+                       "\r\n[bridge] RX lost PC %lu / ESP %lu, TX queue full PC %lu / ESP %lu, TX start failures %lu\r\n",
+                       (unsigned long)from_pc.lost, (unsigned long)from_esp.lost,
+                       (unsigned long)to_pc.dropped, (unsigned long)to_esp.dropped, (unsigned long)tx_failures);
+    if (len > 0)
+      bridge_send(PC_UART, (const uint8_t *)msg, (uint16_t)(len < (int)sizeof(msg) ? len : (int)sizeof(msg) - 1));
   }
 }
 /* USER CODE END 0 */
