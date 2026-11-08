@@ -158,8 +158,8 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
       p->code = b[1];                                   /* 0 = connection accepted */
       return MQTT_EVT_CONNACK;
 
-    case MQTT_PKT_SUBACK:                                /* 0x90 len id_hi id_lo codes... */
-      if (p->header != 0x90U || n < 3U) return MQTT_EVT_ERROR;
+    case MQTT_PKT_SUBACK:                                /* 0x90 0x03 id_hi id_lo code */
+      if (p->header != 0x90U || n != 3U) return MQTT_EVT_ERROR;      /* single-topic API: exactly one code */
       p->id = (uint16_t)((b[0] << 8) | b[1]);
       if (p->id == 0U) return MQTT_EVT_ERROR;           /* packet identifier 0 is illegal */
       for (uint32_t i = 2; i < n; i++)
@@ -229,6 +229,11 @@ mqtt_event_t mqtt_parser_feed(mqtt_parser_t *p, uint8_t byte)
       {
         if (p->len_bytes >= 4U) { p->state = ST_HEADER; return MQTT_EVT_ERROR; }   /* >4 length bytes */
         return MQTT_EVT_NONE;
+      }
+      if (p->len_bytes > 1U && byte == 0U)        /* e.g. 0x80 0x00: value encoded in more bytes than needed */
+      {
+        p->state = ST_HEADER;
+        return MQTT_EVT_ERROR;
       }
       p->oversized = (p->remaining > MQTT_RX_PACKET_MAX);
       if (p->remaining == 0U) { p->state = ST_HEADER; return decode_packet(p); }

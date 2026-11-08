@@ -146,8 +146,25 @@ static uint32_t ipd_length(void)
   return v;
 }
 
+/* If the ring buffer overflowed, bytes are missing from the stream: the +IPD
+   framing and the MQTT parser can no longer be trusted. Reset both and mark
+   the session down so the application reconnects cleanly. */
+static void check_overflow(void)
+{
+  static uint32_t seen = 0;
+  if (ring_overflows == seen)
+    return;
+  seen = ring_overflows;
+  ring_tail = ring_head;            /* buffered bytes belong to the broken stream: discard them */
+  line_len = 0;
+  ipd_left = 0;
+  mqtt_parser_init(&parser);
+  mqtt_connected = false;
+}
+
 static void esp_pump(void)
 {
+  check_overflow();
   while (ring_tail != ring_head)
   {
     uint8_t c = ring[ring_tail];
@@ -171,6 +188,11 @@ static void esp_pump(void)
       line[line_len] = '\0';
       ipd_left = ipd_length();
       line_len = 0;
+      if (ipd_left == 0U || ipd_left > 2048U)       /* malformed frame: drop parser state */
+      {
+        ipd_left = 0;
+        mqtt_parser_init(&parser);
+      }
       continue;
     }
     if (line_len < LINE_MAX - 1U) line[line_len++] = (char)c;

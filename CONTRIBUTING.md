@@ -29,8 +29,9 @@ copy of the libraries it uses. `Common_Libraries/` holds the master copies.
 | `Common_Libraries/Helpers/` (`wifi_config.h`, `fmt_fixed.h`) | the Wi-Fi / BME280 projects above |
 | 8051 `delay.c/.h`, `lcd.c/.h` | each 8051 task folder that uses them |
 
-Workflow: change the master copy → run `make -C tests` → copy it into the projects → run
-`tools/build_all.sh`. For example:
+Workflow: change the master copy → run `make -C tests` → `tools/check_lib_copies.sh --fix` copies it
+into every project → run `tools/build_all.sh`. CI runs `tools/check_lib_copies.sh` and fails if any
+project copy differs from its master. Manual equivalent:
 
 ```bash
 L=Common_Libraries/ESPLib_MQTT
