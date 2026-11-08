@@ -40,7 +40,9 @@ Also: PINGREQ waits for PINGRESP (no answer → reconnect), topics that do not f
 
 The client is **QoS 0 only**: publish/subscribe calls asking for QoS 1/2 return `funcErr`, a SUBACK must grant QoS 0, and incoming QoS 1/2 messages (which would need PUBACK) are dropped and counted. UNSUBSCRIBE waits for the matching UNSUBACK.
 
-Tested on the PC: `make -C tests` (45 parser checks + 33 ESPLib checks against a simulated ESP8266, including both `AT+CIPSEND` reply styles, a silent broker, UNSUBACK, the QoS rules and a PUBLISH arriving in the middle of a send).
+If the UART ring buffer ever overflows, the buffered bytes are discarded, the parser is reset and the session is marked down, so the board reconnects instead of parsing a broken stream.
+
+Tested on the PC: `make -C tests` (47 parser checks + 43 ESPLib checks against a simulated ESP8266, including both `AT+CIPSEND` reply styles, packets split across and combined in TCP chunks, wrong ACK ids, a silent broker and an overflow in the middle of a packet).
 
 ---
 

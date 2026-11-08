@@ -455,7 +455,8 @@ int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, v
 
 /* delay_function(): the API asks for microseconds.
  * >= 1 ms : HAL_Delay (SysTick, waits at least the requested time)
- *  < 1 ms : busy-wait on the Cortex-M4 DWT cycle counter (84 cycles = 1 us) */
+ *  < 1 ms : busy-wait on the Cortex-M4 DWT cycle counter. Cycles per us are
+ *           taken from SystemCoreClock (84 at the 84 MHz used here). */
 void user_delay_us(uint32_t period, void *intf_ptr)
 {
   (void)intf_ptr;

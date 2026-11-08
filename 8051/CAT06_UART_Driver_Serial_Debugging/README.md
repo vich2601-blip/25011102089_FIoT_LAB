@@ -94,7 +94,7 @@ PC → 8051 → PC works, so both receive and transmit paths are correct.
 **Project folder:** [`TaskC_Interrupt_Driven_RX_Ring_Buffer`](TaskC_Interrupt_Driven_RX_Ring_Buffer/)
 
 ### Working principle
-The serial interrupt (vector 4) stores each received byte in a 16-byte ring buffer (`head` written by the ISR, `tail` read by main) and clears TI for the transmitter. The main loop is free to do other work (an LED heartbeat) and collects a line until Enter.
+The serial interrupt (vector 4) stores each received byte in a 16-slot ring buffer (one slot is kept free to tell "full" from "empty", so it holds 15 bytes) (`head` written by the ISR, `tail` read by main) and clears TI for the transmitter. The main loop is free to do other work (an LED heartbeat) and collects a line until Enter.
 
 ### Pseudocode
 1. `uart_init()` with ES = EA = 1.

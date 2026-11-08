@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -167,26 +168,100 @@ static at_status_t esp_startup(void)
   return st;
 }
 
-/* Transparent bridge: PuTTY <-> ESP8266, so further AT commands can be typed
- * by hand (e.g. AT+CWJAP, AT+CIFSR, AT+CIPSTART, AT+CIPSEND). Enter -> CR LF */
+/* ---------------------------------------------------------------------------
+ * Transparent bridge PuTTY <-> ESP8266, interrupt driven.
+ * Each UART receives into its own ring buffer from its RX interrupt, so a
+ * byte arriving on one side is never lost while the other side is being
+ * written. The main loop forwards whatever has arrived in batches.
+ * Enter (CR) from PuTTY is sent to the ESP as CR LF. Overflows are counted.
+ * ------------------------------------------------------------------------- */
+#define BRIDGE_RING   256U                       /* power of two */
+typedef struct
+{
+  volatile uint8_t  buf[BRIDGE_RING];
+  volatile uint16_t head, tail;
+  volatile uint32_t lost;
+  uint8_t           rx;                          /* byte the interrupt receives into */
+} bridge_ring_t;
+
+static bridge_ring_t from_pc, from_esp;
+static uint8_t bridge_on = 0;
+
+static void ring_push(bridge_ring_t *r, uint8_t c)
+{
+  uint16_t next = (uint16_t)((r->head + 1U) & (BRIDGE_RING - 1U));
+  if (next != r->tail) { r->buf[r->head] = c; r->head = next; }
+  else r->lost++;
+}
+
+static uint16_t ring_take(bridge_ring_t *r, uint8_t *out, uint16_t max)
+{
+  uint16_t n = 0;
+  while (n < max && r->tail != r->head)
+  {
+    out[n++] = r->buf[r->tail];
+    r->tail = (uint16_t)((r->tail + 1U) & (BRIDGE_RING - 1U));
+  }
+  return n;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (!bridge_on) return;
+  if (huart == ESP_UART)     { ring_push(&from_esp, from_esp.rx); HAL_UART_Receive_IT(ESP_UART, &from_esp.rx, 1); }
+  else if (huart == PC_UART) { ring_push(&from_pc,  from_pc.rx);  HAL_UART_Receive_IT(PC_UART,  &from_pc.rx,  1); }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (!bridge_on) return;
+  __HAL_UART_CLEAR_OREFLAG(huart);
+  if (huart == ESP_UART)     HAL_UART_Receive_IT(ESP_UART, &from_esp.rx, 1);
+  else if (huart == PC_UART) HAL_UART_Receive_IT(PC_UART,  &from_pc.rx,  1);
+}
+
+static void at_bridge_start(void)
+{
+  memset((void *)&from_pc, 0, sizeof(from_pc));
+  memset((void *)&from_esp, 0, sizeof(from_esp));
+  bridge_on = 1;
+  __HAL_UART_CLEAR_OREFLAG(ESP_UART);
+  HAL_UART_Receive_IT(ESP_UART, &from_esp.rx, 1);
+  HAL_UART_Receive_IT(PC_UART,  &from_pc.rx,  1);
+}
+
 static void at_bridge_poll(void)
 {
-  uint8_t c;
-  if (HAL_UART_Receive(PC_UART, &c, 1, 0) == HAL_OK)
+  static uint32_t reported = 0;
+  uint8_t chunk[64];
+  uint8_t out[2 * sizeof(chunk)];
+  uint16_t n, i, m;
+
+  /* ESP8266 -> PC, as much as has arrived (up to 64 bytes per call) */
+  n = ring_take(&from_esp, chunk, sizeof(chunk));
+  if (n) HAL_UART_Transmit(PC_UART, chunk, n, 100);
+
+  /* PC -> ESP8266 (CR becomes CR LF) and local echo */
+  n = ring_take(&from_pc, chunk, sizeof(chunk));
+  for (i = 0, m = 0; i < n; i++)
   {
-    HAL_UART_Transmit(PC_UART, &c, 1, 10);         /* local echo */
-    if (c == '\r')
-    {
-      HAL_UART_Transmit(PC_UART, (uint8_t *)"\n", 1, 10);
-      HAL_UART_Transmit(ESP_UART, (uint8_t *)"\r\n", 2, 10);
-    }
-    else
-    {
-      HAL_UART_Transmit(ESP_UART, &c, 1, 10);
-    }
+    out[m++] = chunk[i];
+    if (chunk[i] == '\r') out[m++] = '\n';
   }
-  if (HAL_UART_Receive(ESP_UART, &c, 1, 0) == HAL_OK)
-    HAL_UART_Transmit(PC_UART, &c, 1, 10);
+  if (m)
+  {
+    HAL_UART_Transmit(PC_UART, out, m, 100);
+    HAL_UART_Transmit(ESP_UART, out, m, 100);
+  }
+
+  if (from_pc.lost + from_esp.lost != reported)
+  {
+    char msg[64];
+    reported = from_pc.lost + from_esp.lost;
+    snprintf(msg, sizeof(msg), "\r\n[bridge] bytes lost: PC->ESP %lu, ESP->PC %lu\r\n",
+             (unsigned long)from_pc.lost, (unsigned long)from_esp.lost);
+    pc_print(msg);
+  }
 }
 /* USER CODE END 0 */
 
@@ -243,6 +318,7 @@ int main(void)
   pc_println("Send application data  -> AT+CIPSEND=<length>");
   pc_println("");
   pc_println("Bridge mode: try the remaining commands by hand.");
+  at_bridge_start();                /* interrupt-driven from here on */
   /* USER CODE END 2 */
 
   /* Infinite loop */

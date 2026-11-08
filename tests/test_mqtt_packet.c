@@ -143,6 +143,10 @@ static void test_parse_publish(void)
   CHECK(e1 == MQTT_EVT_ERROR && e2 == MQTT_EVT_PINGRESP);
 
   /* more than 4 Remaining Length bytes is malformed */
+  const uint8_t non_canonical[] = { 0xD0, 0x80, 0x00 };              /* length 0 written in two bytes */
+  CHECK(feed_all(&p, non_canonical, sizeof non_canonical, &ev) == MQTT_EVT_ERROR);
+  const uint8_t suback_two[] = { 0x90, 0x04, 0x00, 0x05, 0x00, 0x00 }; /* two codes for a one-topic request */
+  CHECK(feed_all(&p, suback_two, sizeof suback_two, &ev) == MQTT_EVT_ERROR);
   const uint8_t too_long_len[] = { 0x30, 0xFF, 0xFF, 0xFF, 0xFF };
   CHECK(feed_all(&p, too_long_len, sizeof too_long_len, &ev) == MQTT_EVT_ERROR);
 }

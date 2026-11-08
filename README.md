@@ -65,7 +65,7 @@ flowchart LR
 |---|---|---|
 | All 17 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors; 0 warnings with `-Wall -Wextra` in the application code (`Core/`). Vendor HAL drivers are compiled with warnings off (`-w`), as is usual for vendor code — see [`docs/build-log.txt`](docs/build-log.txt) |
 | All 15 8051 projects | compiled with SDCC from the Keil sources (keywords mapped on a temporary copy) | 0 errors; committed HEX files match the sources. SDCC is not Keil C51 — Keil output is not verified here |
-| MQTT client (CAT 13) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 45 packet encode/parse/validation checks + 33 ESPLib checks against a simulated ESP8266 and broker (both CIPSEND reply styles, PINGRESP timeout, UNSUBACK, QoS-0-only rules, malformed packets, a PUBLISH arriving mid-send) |
+| MQTT client (CAT 13) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 47 packet checks + 43 ESPLib checks + 13 AT-driver checks against a simulated ESP8266 and broker: both CIPSEND reply styles, PINGRESP timeout, UNSUBACK, QoS-0-only rules, malformed and non-canonical packets, packets split across or combined in TCP chunks, wrong ACK ids, RX overflow mid-packet with clean reconnect |
 | 8051 timing | measured in the uCsim 8051 simulator at 11.0592 MHz (SDCC code) | CAT 2 blink 1.000 s, `delay_ms()` 1.000 ms, CAT 5 timer toggle 0.999 s, 100 Hz mode 100.2 Hz |
 | Node-RED flows | JSON structure and wiring validated, function code syntax-checked | valid |
 | Memory use | linker output | largest Blue Pill build 7.9 KB of 32 KB flash; largest Nucleo build 33 KB of 512 KB |
@@ -119,7 +119,8 @@ Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib MQTT client (rewrite)
 * Application code sits inside CubeMX `USER CODE` blocks, so *Generate Code* in CubeMX keeps it.
 * Floats are printed with integer maths (`fmt_fixed.h`) because newlib-nano has no `%f` by default.
 * Every project builds from the command line: `tools/build_all.sh` (also run by GitHub Actions on every push). `docs/build-log.txt` is simply the output of that script, run locally on macOS with the GCC that ships with STM32CubeIDE and SDCC 4.6; `UPDATE_HEX=1 tools/build_all.sh 8051` refreshes the committed HEX files.
-* Host-side tests: `make -C tests` (MQTT packet parser and ESPLib against a simulated ESP8266).
+* Host-side tests: `make -C tests` (MQTT packet parser, ESPLib and the ESP8266 AT driver against a simulated ESP8266).
+* Maintaining the duplicated libraries, HEX files and build log: see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licence
 

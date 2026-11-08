@@ -38,7 +38,8 @@ After a 2 s boot wait the STM32 sends `AT`, collects reply lines until `OK`/`ERR
 1. Banner on USART2.
 2. `esp_startup()`: wait, retry `AT` up to 3 times, `ATE0`.
 3. `at_show("AT")` → prints `>> AT`, `<< OK`.
-4. Loop: `at_bridge_poll()`.
+4. `at_bridge_start()`: both UARTs switch to interrupt-driven receive, each into its own 256-byte ring buffer.
+5. Loop: `at_bridge_poll()` forwards everything that has arrived in batches (CR from PuTTY → CR LF to the ESP) and reports lost bytes, so typing and long ESP replies do not drop characters.
 
 ### Code base
 - `esp_read_line()` — line reader with timeout

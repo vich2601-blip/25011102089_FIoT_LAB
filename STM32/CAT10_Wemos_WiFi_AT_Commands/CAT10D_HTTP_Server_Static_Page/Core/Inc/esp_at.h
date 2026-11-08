@@ -41,6 +41,8 @@ int          esp_at_get_mac(char *mac, uint16_t size);
 esp_result_t esp_at_start_server(uint16_t port);
 int          esp_at_send(uint8_t link, const char *data, uint16_t len);       /* 1 = SEND OK         */
 esp_result_t esp_at_close(uint8_t link);
-uint32_t     esp_at_overflow_count(void);
+uint32_t     esp_at_overflow_count(void);   /* bytes lost: RX ring buffer full          */
+uint32_t     esp_at_truncated_lines(void);  /* lines longer than ESP_LINE_MAX - 1, cut   */
+uint32_t     esp_at_tx_errors(void);        /* HAL_UART_Transmit failures                */
 
 #endif /* ESP_AT_H */

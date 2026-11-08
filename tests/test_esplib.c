@@ -42,6 +42,7 @@ static void deliver_all(void)       /* simulate the RX interrupt firing for ever
     *rx_target = pending[pend_tail++];
     HAL_UART_RxCpltCallback(&huart1);   /* library re-arms inside the callback */
   }
+  if (pend_tail == pend_head) pend_tail = pend_head = 0;
 }
 
 static void esp_says(const void *d, size_t n) { memcpy(&pending[pend_head], d, n); pend_head += n; }
@@ -62,6 +63,7 @@ static int      inject_publish_during_send;
 static int      broker_refuses;
 static int      broker_silent;         /* do not answer PINGREQ / UNSUBSCRIBE */
 static uint8_t  suback_grant;          /* QoS the broker grants in SUBACK */
+static uint8_t  ack_id_offset;         /* answer SUBACK with a wrong packet id */
 static int      cipsend_ok_first = 1;  /* 1: "OK" then ">" (Espressif), 0: only ">" (older firmware) */
 static int      skip_lf;               /* the \n that ends an AT command line */
 
@@ -70,7 +72,7 @@ static void broker_handle(const uint8_t *p, size_t n)
   (void)n;
   uint8_t type = p[0] >> 4;
   if (type == 1) { uint8_t ack[] = { 0x20, 0x02, 0x00, (uint8_t)(broker_refuses ? 5 : 0) }; esp_ipd(ack, sizeof ack); }
-  if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], p[3], suback_grant }; esp_ipd(ack, sizeof ack); }
+  if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], (uint8_t)(p[3] + ack_id_offset), suback_grant }; esp_ipd(ack, sizeof ack); }
   if (type == 10 && !broker_silent) { uint8_t ack[] = { 0xB0, 0x02, p[2], p[3] }; esp_ipd(ack, sizeof ack); }
   if (type == 12 && !broker_silent) { uint8_t ack[] = { 0xD0, 0x00 }; esp_ipd(ack, sizeof ack); }
 }
@@ -197,7 +199,45 @@ int main(void)
   CHECK(MQTT_unsubscribeTopic("a/led") == funcErr);
   broker_silent = 0;
 
+  /* several MQTT packets inside one +IPD block */
+  {
+    const uint8_t two[] = { 0xD0, 0x00, 0x30, 0x08, 0x00, 0x03, 'a', '/', 'b', 'O', 'N', '1' };
+    esp_ipd(two, sizeof two); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 1 && strcmp(topic, "a/b") == 0 && strcmp(msg, "ON1") == 0);
+  }
+  /* one MQTT packet split across two +IPD blocks */
+  {
+    const uint8_t pub[] = { 0x30, 0x08, 0x00, 0x03, 'a', '/', 'c', 'O', 'N', '2' };
+    esp_ipd(pub, 4); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 0);                    /* incomplete: nothing yet */
+    esp_ipd(pub + 4, sizeof pub - 4); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 1 && strcmp(topic, "a/c") == 0 && strcmp(msg, "ON2") == 0);
+  }
+  /* SUBACK carrying a different packet id is not accepted */
+  ack_id_offset = 1;
+  CHECK(MQTT_subscribeTopic("a/led", QoS0) == funcErr);
+  ack_id_offset = 0;
+  CHECK(MQTT_subscribeTopic("a/led", QoS0) == funcOk);
+
   CHECK(ESP8266_rxOverflows() == 0);
+
+  /* ring-buffer overflow in the middle of a packet: state is reset and the
+     session is marked down so the application reconnects */
+  {
+    uint8_t big[1200];
+    memset(big, 'z', sizeof big);
+    big[0] = 0x30; big[1] = 0x86; big[2] = 0x09;             /* PUBLISH, remaining 1158 */
+    char hdr[24]; snprintf(hdr, sizeof hdr, "\r\n+IPD,%u:", (unsigned)sizeof big);
+    esp_says_str(hdr); esp_says(big, sizeof big);
+    deliver_all();                                            /* > 1 KB arrives before the app reads it */
+    CHECK(ESP8266_rxOverflows() > 0);
+    CHECK(!MQTT_isConnected());
+    CHECK(MQTTDataHandler(topic, msg) == 0);
+    CHECK(MQTT_connectBroker(&cfg) == funcOk && MQTT_isConnected());   /* clean reconnect works */
+    const uint8_t pub[] = { 0x30, 0x07, 0x00, 0x03, 'a', '/', 'd', 'o', 'k' };
+    esp_ipd(pub, sizeof pub); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 1 && strcmp(msg, "ok") == 0);
+  }
   printf("ESPLib: %d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;
 }

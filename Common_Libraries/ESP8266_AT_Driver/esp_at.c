@@ -65,9 +65,30 @@ static int ring_pop(uint8_t *c)
   return 1;
 }
 
-static void uart_write(const char *s, uint16_t len)
+static uint32_t truncated_lines = 0;
+static uint32_t tx_errors = 0;
+static uint8_t  line_cut = 0;          /* current line exceeded the buffer */
+
+static int uart_write(const char *s, uint16_t len)
 {
-  HAL_UART_Transmit(esp_uart, (uint8_t *)s, len, 1000);
+  if (HAL_UART_Transmit(esp_uart, (uint8_t *)s, len, 1000) != HAL_OK)
+  {
+    tx_errors++;
+    return 0;
+  }
+  return 1;
+}
+
+/* After a ring-buffer overflow the partial line is garbage: start fresh */
+static void resync_after_overflow(void)
+{
+  static uint32_t seen = 0;
+  if (ring_overflows != seen)
+  {
+    seen = ring_overflows;
+    line_len = 0;
+    line_cut = 0;
+  }
 }
 
 void esp_at_init(UART_HandleTypeDef *huart, esp_urc_handler_t urc_handler)
@@ -86,31 +107,44 @@ void esp_at_flush(void)
   line_len = 0;
 }
 
-uint32_t esp_at_overflow_count(void)
-{
-  return ring_overflows;
-}
+uint32_t esp_at_overflow_count(void)  { return ring_overflows; }
+uint32_t esp_at_truncated_lines(void) { return truncated_lines; }
+uint32_t esp_at_tx_errors(void)       { return tx_errors; }
 
 /* Move bytes from the ring into line_acc; returns 1 when a full line is ready */
+/* Add one received character to the line being assembled.
+   Returns 1 when a complete line is in line_acc (NUL-terminated). */
+static int line_feed(uint8_t c)
+{
+  if (c == '\r' || c == '\n')
+  {
+    if (line_len == 0U)
+      return 0;
+    line_acc[line_len] = '\0';
+    line_len = 0;
+    if (line_cut) { truncated_lines++; line_cut = 0; }
+    return 1;
+  }
+  if (line_len < ESP_LINE_MAX - 1U)
+    line_acc[line_len++] = (char)c;
+  else
+    line_cut = 1;                     /* too long: rest of the line is dropped and counted */
+  return 0;
+}
+
 static int poll_line(char *out, uint16_t size)
 {
   uint8_t c;
+  if (size == 0U)
+    return 0;
+  resync_after_overflow();
   while (ring_pop(&c))
   {
-    if (c == '\r' || c == '\n')
+    if (line_feed(c))
     {
-      if (line_len > 0)
-      {
-        line_acc[line_len] = '\0';
-        strncpy(out, line_acc, size - 1U);
-        out[size - 1U] = '\0';
-        line_len = 0;
-        return 1;
-      }
-    }
-    else if (line_len < ESP_LINE_MAX - 1U)
-    {
-      line_acc[line_len++] = (char)c;
+      strncpy(out, line_acc, size - 1U);
+      out[size - 1U] = '\0';
+      return 1;
     }
   }
   return 0;
@@ -127,6 +161,8 @@ static int is_unsolicited(const char *l)
 
 int esp_at_read_line(char *out, uint16_t size, uint32_t timeout_ms)
 {
+  if (out == NULL || size == 0U)
+    return -1;
   uint32_t start = HAL_GetTick();
   do
   {
@@ -151,8 +187,8 @@ esp_result_t esp_at_cmd(const char *cmd, char *resp, uint16_t resp_size, uint32_
   if (resp != NULL && resp_size > 0)
     resp[0] = '\0';
 
-  uart_write(cmd, (uint16_t)strlen(cmd));
-  uart_write("\r\n", 2);
+  if (!uart_write(cmd, (uint16_t)strlen(cmd)) || !uart_write("\r\n", 2))
+    return ESP_ERROR;
 
   while ((HAL_GetTick() - start) < timeout_ms)
   {
@@ -192,13 +228,16 @@ esp_result_t esp_at_join_ap(const char *ssid, const char *password)
   char cmd[100];
   if (esp_at_cmd("AT+CWMODE=1", NULL, 0, 2000) != ESP_OK)     /* station mode */
     return ESP_ERROR;
-  snprintf(cmd, sizeof(cmd), "AT+CWJAP=\"%s\",\"%s\"", ssid, password);
+  if (snprintf(cmd, sizeof(cmd), "AT+CWJAP=\"%s\",\"%s\"", ssid, password) >= (int)sizeof(cmd))
+    return ESP_ERROR;                                          /* SSID/password too long */
   return esp_at_cmd(cmd, NULL, 0, 20000);                      /* joining can take ~10 s */
 }
 
 /* Copy the text between key and the next '"' (used for AT+CIFSR replies) */
 static int extract_after(const char *text, const char *key, char *out, uint16_t size)
 {
+  if (out == NULL || size == 0U)
+    return 0;
   const char *p = strstr(text, key);
   uint16_t n = 0;
   if (p == NULL)
@@ -236,14 +275,28 @@ esp_result_t esp_at_start_server(uint16_t port)
   return esp_at_cmd(cmd, NULL, 0, 2000);
 }
 
+/* Wait for the CIPSEND '>' prompt. Works whether or not the firmware sends
+   "OK" first. Other lines that arrive meanwhile are not thrown away:
+   unsolicited ones (+IPD, n,CONNECT, ...) still go to the callback, and
+   ERROR / busy / link-closed answers end the wait with a failure. */
 static int wait_for_prompt(uint32_t timeout_ms)
 {
   uint32_t start = HAL_GetTick();
   uint8_t  c;
+  resync_after_overflow();
   while ((HAL_GetTick() - start) < timeout_ms)
   {
-    if (ring_pop(&c) && c == '>')
+    if (!ring_pop(&c))
+      continue;
+    if (c == '>' && line_len == 0U)
       return 1;
+    if (!line_feed(c))
+      continue;
+    if (strcmp(line_acc, "ERROR") == 0 || strcmp(line_acc, "link is not valid") == 0 ||
+        strncmp(line_acc, "busy", 4) == 0)
+      return 0;
+    if (is_unsolicited(line_acc) && urc_cb != NULL)
+      urc_cb(line_acc);
   }
   return 0;
 }
@@ -255,13 +308,16 @@ int esp_at_send(uint8_t link, const char *data, uint16_t len)
   char     line[ESP_LINE_MAX];
   uint32_t start;
 
-  snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%u,%u", link, len);
-  if (esp_at_cmd(cmd, NULL, 0, 2000) != ESP_OK)
+  if (data == NULL || len == 0U || len > 2048U)
     return 0;
-  if (!wait_for_prompt(2000))
+  snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%u,%u", link, len);
+  if (!uart_write(cmd, (uint16_t)strlen(cmd)) || !uart_write("\r\n", 2))
+    return 0;
+  if (!wait_for_prompt(2000))           /* do not wait for "OK": some firmware sends only '>' */
     return 0;
 
-  uart_write(data, len);
+  if (!uart_write(data, len))
+    return 0;
 
   start = HAL_GetTick();
   while ((HAL_GetTick() - start) < 5000U)

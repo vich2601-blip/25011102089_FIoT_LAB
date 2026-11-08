@@ -36,3 +36,4 @@ Thumbs.db
 tests/test_mqtt_packet
 tests/*.dSYM/
 tests/test_esplib
+tests/test_esp_at
