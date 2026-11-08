@@ -1,0 +1,17 @@
+{
+  "name": "ULN2003 driver",
+  "author": "FIoT Lab",
+  "pins": [
+    "IN1",
+    "IN2",
+    "IN3",
+    "IN4",
+    "GND",
+    "VCC",
+    "OUT4",
+    "OUT3",
+    "OUT2",
+    "OUT1"
+  ],
+  "controls": []
+}

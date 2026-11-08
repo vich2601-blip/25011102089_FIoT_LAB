@@ -1,0 +1,19 @@
+{
+  "name": "USBasp ISP",
+  "author": "FIoT Lab",
+  "pins": [
+    "NC1",
+    "NC2",
+    "NC3",
+    "NC4",
+    "NC5",
+    "NC6",
+    "GND",
+    "RST",
+    "SCK",
+    "MISO",
+    "MOSI",
+    "VCC"
+  ],
+  "controls": []
+}

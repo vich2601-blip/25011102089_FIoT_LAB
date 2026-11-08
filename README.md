@@ -4,7 +4,7 @@ Lab work for **25CS2741 Fundamentals of Internet of Things + Lab** — B.Tech CS
 
 The work goes from register-level C on the **8051**, to **STM32** with CubeMX and the HAL, and ends with a networked sensor node: an STM32 reads a **BME280** over I²C and shares the data over Wi-Fi through an **ESP8266**, first as an **HTTP/JSON** server and then over **MQTT** into **Node-RED**.
 
-Every experiment folder has a `README.md` with the experiment details, a **circuit diagram**, the working principle, pseudocode, the code base and the inference.
+Every experiment folder has a `README.md` with the experiment details, a **circuit diagram drawn on Wokwi**, the working principle, pseudocode, the code base and the inference.
 
 ## 8051 (AT89S52) — Keil µVision, bare-metal C
 
@@ -55,10 +55,10 @@ Every experiment folder has a `README.md` with the experiment details, a **circu
 
 ```
 8051/CATxx_<name>/
-├── README.md, circuit.svg
+├── README.md, circuit.png, wokwi/ (diagram.json + custom chips)
 └── <Task folder>/   main.c, libraries (delay, uart, lcd), STARTUP.A51, *.uvproj
 STM32/CATxx_<name>/
-├── README.md, circuit.svg (+ dataflow.svg), Node-RED flows (CAT 12, 13)
+├── README.md, circuit.png, wokwi/, dataflow.svg, Node-RED flows (CAT 12, 13)
 └── <Project>/       Core/ (Src, Inc, Startup), Drivers/, *.ioc, .project, .cproject, *.ld
 Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib (fixed), helpers
 ```

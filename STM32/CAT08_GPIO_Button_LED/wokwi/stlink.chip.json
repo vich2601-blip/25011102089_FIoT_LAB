@@ -1,0 +1,15 @@
+{
+  "name": "ST-LINK V2",
+  "author": "FIoT Lab",
+  "pins": [
+    "V3V3",
+    "SWDIO",
+    "SWCLK",
+    "GND",
+    "NC1",
+    "NC2",
+    "NC3",
+    "NC4"
+  ],
+  "controls": []
+}

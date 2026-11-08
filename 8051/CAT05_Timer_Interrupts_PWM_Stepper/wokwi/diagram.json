@@ -1,0 +1,762 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "chip-at89s52",
+      "id": "mcu",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "attrs": {},
+      "type": "chip-uln2003",
+      "id": "uln",
+      "top": -10,
+      "left": -300,
+      "rotate": 180
+    },
+    {
+      "attrs": {},
+      "type": "wokwi-stepper-motor",
+      "id": "step",
+      "top": -60,
+      "left": -560
+    },
+    {
+      "attrs": {
+        "color": "green"
+      },
+      "type": "wokwi-led",
+      "id": "led",
+      "top": 160,
+      "left": -260
+    },
+    {
+      "attrs": {
+        "value": "330"
+      },
+      "type": "wokwi-resistor",
+      "id": "r",
+      "top": 195,
+      "left": -200
+    },
+    {
+      "attrs": {
+        "common": "cathode"
+      },
+      "type": "wokwi-7segment",
+      "id": "seg",
+      "top": -150,
+      "left": 300
+    },
+    {
+      "attrs": {
+        "color": "blue"
+      },
+      "type": "wokwi-pushbutton",
+      "id": "btn",
+      "top": 270,
+      "left": 260
+    },
+    {
+      "type": "wokwi-text",
+      "id": "lbl9",
+      "top": 214.7,
+      "left": -150.1,
+      "attrs": {
+        "text": "P1.1 signal / DSO"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -180,
+      "left": -560,
+      "attrs": {
+        "text": "CAT 5 - Timer-0 interrupts: LED/PWM, square waves, stepper"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": 330,
+      "left": -560,
+      "attrs": {
+        "text": "ULN2003 + 28BYJ-48 (drawn as a 4-wire stepper), wave drive 1000-0100-0010-0001"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 240,
+      "left": 230,
+      "attrs": {
+        "text": "Mode key (P2.5 low / P2.0 read), 7-segment shows mode"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_mcu",
+      "top": -18,
+      "left": -44.9,
+      "attrs": {
+        "text": "AT89S52 (8051, 40-pin DIP)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_uln",
+      "top": -28,
+      "left": -298.1,
+      "attrs": {
+        "text": "ULN2003 driver"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_0",
+      "top": 3.6,
+      "left": 10.8,
+      "attrs": {
+        "text": "1 P1.0"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_1",
+      "top": 13.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "2 P1.1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_2",
+      "top": 22.7,
+      "left": 10.8,
+      "attrs": {
+        "text": "3 P1.2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_3",
+      "top": 32.3,
+      "left": 10.8,
+      "attrs": {
+        "text": "4 P1.3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_4",
+      "top": 41.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "5 P1.4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_5",
+      "top": 51.4,
+      "left": 10.8,
+      "attrs": {
+        "text": "6 P1.5/MOSI"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_6",
+      "top": 61,
+      "left": 10.8,
+      "attrs": {
+        "text": "7 P1.6/MISO"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_7",
+      "top": 70.5,
+      "left": 10.8,
+      "attrs": {
+        "text": "8 P1.7/SCK"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_8",
+      "top": 80.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "9 RST"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_9",
+      "top": 89.7,
+      "left": 10.8,
+      "attrs": {
+        "text": "10 P3.0/RXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_10",
+      "top": 99.2,
+      "left": 10.8,
+      "attrs": {
+        "text": "11 P3.1/TXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_11",
+      "top": 108.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "12 P3.2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_12",
+      "top": 118.4,
+      "left": 10.8,
+      "attrs": {
+        "text": "13 P3.3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_13",
+      "top": 127.9,
+      "left": 10.8,
+      "attrs": {
+        "text": "14 P3.4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_14",
+      "top": 137.5,
+      "left": 10.8,
+      "attrs": {
+        "text": "15 P3.5"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_15",
+      "top": 147.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "16 P3.6"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_16",
+      "top": 156.6,
+      "left": 10.8,
+      "attrs": {
+        "text": "17 P3.7"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_17",
+      "top": 166.2,
+      "left": 10.8,
+      "attrs": {
+        "text": "18 XTAL2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_18",
+      "top": 175.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "19 XTAL1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_19",
+      "top": 185.3,
+      "left": 10.8,
+      "attrs": {
+        "text": "20 GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_20",
+      "top": 185.3,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.0 21"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_21",
+      "top": 175.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.1 22"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_22",
+      "top": 166.2,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.2 23"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_23",
+      "top": 156.6,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.3 24"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_24",
+      "top": 147.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.4 25"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_25",
+      "top": 137.5,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.5 26"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_26",
+      "top": 127.9,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.6 27"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_27",
+      "top": 118.4,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.7 28"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_28",
+      "top": 108.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "PSEN 29"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_29",
+      "top": 99.2,
+      "left": 75.8,
+      "attrs": {
+        "text": "ALE 30"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_30",
+      "top": 89.7,
+      "left": 80.2,
+      "attrs": {
+        "text": "EA 31"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_31",
+      "top": 80.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.7 32"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_32",
+      "top": 70.5,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.6 33"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_33",
+      "top": 61,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.5 34"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_34",
+      "top": 51.4,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.4 35"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_35",
+      "top": 41.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.3 36"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_36",
+      "top": 32.3,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.2 37"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_37",
+      "top": 22.7,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.1 38"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_38",
+      "top": 13.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.0 39"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_39",
+      "top": 3.6,
+      "left": 75.8,
+      "attrs": {
+        "text": "VCC 40"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_0",
+      "top": 31.8,
+      "left": -211,
+      "attrs": {
+        "text": "IN1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_1",
+      "top": 22.2,
+      "left": -211,
+      "attrs": {
+        "text": "IN2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_2",
+      "top": 12.7,
+      "left": -211,
+      "attrs": {
+        "text": "IN3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_3",
+      "top": 3.1,
+      "left": -211,
+      "attrs": {
+        "text": "IN4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_4",
+      "top": -6.5,
+      "left": -211,
+      "attrs": {
+        "text": "GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_5",
+      "top": -6.5,
+      "left": -289.2,
+      "attrs": {
+        "text": "+5V"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_6",
+      "top": 3.1,
+      "left": -289.2,
+      "attrs": {
+        "text": "OUT4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_7",
+      "top": 12.7,
+      "left": -289.2,
+      "attrs": {
+        "text": "OUT3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_8",
+      "top": 22.2,
+      "left": -289.2,
+      "attrs": {
+        "text": "OUT2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_uln_9",
+      "top": 31.8,
+      "left": -289.2,
+      "attrs": {
+        "text": "OUT1"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "mcu:P1_0",
+      "uln:IN1",
+      "#00bcd4",
+      [
+        "h-64.8",
+        "v28.8"
+      ]
+    ],
+    [
+      "mcu:P1_1",
+      "uln:IN2",
+      "#00bcd4",
+      [
+        "h-74.8",
+        "v9.6"
+      ]
+    ],
+    [
+      "mcu:P1_2",
+      "uln:IN3",
+      "#00bcd4",
+      [
+        "h-84.8",
+        "v-9.6"
+      ]
+    ],
+    [
+      "mcu:P1_3",
+      "uln:IN4",
+      "#00bcd4",
+      [
+        "h-94.8",
+        "v-28.8"
+      ]
+    ],
+    [
+      "uln:OUT1",
+      "step:A+",
+      "#ff9800",
+      [
+        "h-79.8",
+        "v138.1"
+      ]
+    ],
+    [
+      "uln:OUT2",
+      "step:B+",
+      "#ffeb3b",
+      [
+        "h-75",
+        "v147.7"
+      ]
+    ],
+    [
+      "uln:OUT3",
+      "step:A-",
+      "#e91e63",
+      [
+        "h-84.6",
+        "v157.3"
+      ]
+    ],
+    [
+      "uln:OUT4",
+      "step:B-",
+      "#9c27b0",
+      [
+        "h-70.2",
+        "v166.9"
+      ]
+    ],
+    [
+      "uln:GND",
+      "mcu:GND",
+      "black",
+      [
+        "v331",
+        "h161.8",
+        "v-139"
+      ]
+    ],
+    [
+      "mcu:P1_1",
+      "r:2",
+      "#8bc34a",
+      [
+        "h-44.8",
+        "v182.5"
+      ]
+    ],
+    [
+      "r:1",
+      "led:A",
+      "#8bc34a",
+      [
+        "h-17.5",
+        "v1.3"
+      ]
+    ],
+    [
+      "led:C",
+      "mcu:GND",
+      "black",
+      [
+        "v98",
+        "h249.8"
+      ]
+    ],
+    [
+      "mcu:P0_0",
+      "seg:A",
+      "#e91e63",
+      [
+        "h91.4",
+        "v-164.4"
+      ]
+    ],
+    [
+      "mcu:P0_1",
+      "seg:B",
+      "#e91e63",
+      [
+        "h98.4",
+        "v-174"
+      ]
+    ],
+    [
+      "mcu:P0_2",
+      "seg:C",
+      "#e91e63",
+      [
+        "h105.4",
+        "v-115.6"
+      ]
+    ],
+    [
+      "mcu:P0_3",
+      "seg:D",
+      "#e91e63",
+      [
+        "h112.4",
+        "v-125.2"
+      ]
+    ],
+    [
+      "mcu:P0_4",
+      "seg:E",
+      "#e91e63",
+      [
+        "h119.4",
+        "v-134.8"
+      ]
+    ],
+    [
+      "mcu:P0_5",
+      "seg:F",
+      "#e91e63",
+      [
+        "h126.4",
+        "v-212.4"
+      ]
+    ],
+    [
+      "mcu:P0_6",
+      "seg:G",
+      "#e91e63",
+      [
+        "h133.4",
+        "v-222"
+      ]
+    ],
+    [
+      "mcu:P2_5",
+      "btn:1.l",
+      "#03a9f4",
+      [
+        "h111.4",
+        "v140"
+      ]
+    ],
+    [
+      "mcu:P2_0",
+      "btn:2.l",
+      "#03a9f4",
+      [
+        "h96.4",
+        "v111"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

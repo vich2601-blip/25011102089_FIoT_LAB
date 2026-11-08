@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "board-stm32-bluepill",
+      "id": "bp",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "attrs": {},
+      "type": "chip-usbttl",
+      "id": "ttl",
+      "top": 105,
+      "left": 240
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -80,
+      "left": -120,
+      "attrs": {
+        "text": "CAT 9 - UART command-controlled LED"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": -50,
+      "left": -120,
+      "attrs": {
+        "text": "USART2: PA2 TX -> RX, PA3 RX <- TX, 115200-8-N-1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 175,
+      "left": 95,
+      "attrs": {
+        "text": "PC13 LED (active-LOW) <-"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt3",
+      "top": 230,
+      "left": -70,
+      "attrs": {
+        "text": "STM32F103C6T6 Blue Pill"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_ttl",
+      "top": 87,
+      "left": 234.1,
+      "attrs": {
+        "text": "USB-TTL (CP2102)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_0",
+      "top": 108.5,
+      "left": 250.8,
+      "attrs": {
+        "text": "GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_1",
+      "top": 118.1,
+      "left": 250.8,
+      "attrs": {
+        "text": "RXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_2",
+      "top": 127.7,
+      "left": 250.8,
+      "attrs": {
+        "text": "TXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_3",
+      "top": 127.7,
+      "left": 333.4,
+      "attrs": {
+        "text": "5V"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_4",
+      "top": 118.1,
+      "left": 329,
+      "attrs": {
+        "text": "CTS"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_5",
+      "top": 108.5,
+      "left": 329,
+      "attrs": {
+        "text": "DTR"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "bp:A2",
+      "ttl:RXD",
+      "orange",
+      [
+        "h107.2",
+        "v-12.6"
+      ]
+    ],
+    [
+      "bp:A3",
+      "ttl:TXD",
+      "green",
+      [
+        "h127.2",
+        "v6.6"
+      ]
+    ],
+    [
+      "bp:GND.3",
+      "ttl:GND",
+      "black",
+      [
+        "h87.2",
+        "v93"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

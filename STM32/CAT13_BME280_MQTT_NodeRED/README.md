@@ -10,7 +10,9 @@
 
 ## Circuit Diagram
 
-![Circuit diagram – CAT 13](circuit.svg)
+![Circuit diagram – CAT 13](circuit.png)
+
+*Drawn on [Wokwi](https://wokwi.com). To open and edit it: start a new project on wokwi.com, paste [`wokwi/diagram.json`](wokwi/diagram.json) into its diagram.json tab, and add the `wokwi/*.chip.json` files (if any) with **New file**. The AT89S52, USB-TTL, ULN2003, USBasp and ST-LINK boards are custom chips (pin names added as labels). The ESP-01 part stands in for the Wemos D1 mini and the BMP180 module for the BME280 (same AT firmware / same 4-pin I²C header); the Nucleo-64 graphic is labelled as the F401RE.*
 
 ![Data flow](dataflow.svg)
 
