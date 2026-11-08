@@ -11,6 +11,6 @@ void          uart_putc(char c);
 void          uart_puts(const char *s);
 bit           uart_available(void);  /* 1 if a received byte is waiting */
 char          uart_getc(void);       /* blocks until a byte is available */
-unsigned char uart_overflows(void);  /* bytes lost because the buffer was full */
+unsigned int  uart_overflows(void);  /* bytes lost because the buffer was full (16-bit) */
 
 #endif

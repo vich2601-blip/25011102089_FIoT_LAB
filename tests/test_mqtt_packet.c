@@ -43,6 +43,7 @@ static void test_connect(void)
   n = mqtt_build_connect(b, sizeof b, "id", "user", "pw", 30, 1);
   CHECK(n > 0 && b[9] == (0x02 | 0x80 | 0x40));                       /* username + password flags */
   CHECK(mqtt_build_connect(b, 10, "stm32", NULL, NULL, 60, 1) == 0);    /* buffer too small */
+  CHECK(mqtt_build_connect(b, sizeof b, "id", NULL, "pw", 30, 1) == 0); /* password without username is illegal */
 }
 
 static void test_publish_long_payload(void)
@@ -81,6 +82,21 @@ static void test_parse_acks(void)
   CHECK(feed_all(&p, pingresp, sizeof pingresp, &ev) == MQTT_EVT_PINGRESP);
   const uint8_t bad_connack[] = { 0x20, 0x03, 0, 0, 0 };              /* wrong length */
   CHECK(feed_all(&p, bad_connack, sizeof bad_connack, &ev) == MQTT_EVT_ERROR);
+  const uint8_t connack_flags[] = { 0x20, 0x02, 0x02, 0x00 };         /* reserved ack-flag bits set */
+  CHECK(feed_all(&p, connack_flags, sizeof connack_flags, &ev) == MQTT_EVT_ERROR);
+  const uint8_t connack_code[] = { 0x20, 0x02, 0x00, 0x09 };          /* return code > 5 */
+  CHECK(feed_all(&p, connack_code, sizeof connack_code, &ev) == MQTT_EVT_ERROR);
+  const uint8_t connack_hdr[] = { 0x21, 0x02, 0x00, 0x00 };           /* fixed-header flags must be 0 */
+  CHECK(feed_all(&p, connack_hdr, sizeof connack_hdr, &ev) == MQTT_EVT_ERROR);
+  const uint8_t suback_id0[] = { 0x90, 0x03, 0x00, 0x00, 0x00 };      /* packet id 0 */
+  CHECK(feed_all(&p, suback_id0, sizeof suback_id0, &ev) == MQTT_EVT_ERROR);
+  const uint8_t suback_bad[] = { 0x90, 0x03, 0x00, 0x09, 0x05 };      /* return code 5 is not allowed */
+  CHECK(feed_all(&p, suback_bad, sizeof suback_bad, &ev) == MQTT_EVT_ERROR);
+  const uint8_t ping_hdr[] = { 0xD1, 0x00 };                          /* PINGRESP flags must be 0 */
+  CHECK(feed_all(&p, ping_hdr, sizeof ping_hdr, &ev) == MQTT_EVT_ERROR);
+  const uint8_t dup_q0[] = { 0x38, 0x04, 0x00, 0x01, 'a', 'x' };      /* DUP set on a QoS 0 PUBLISH */
+  CHECK(feed_all(&p, dup_q0, sizeof dup_q0, &ev) == MQTT_EVT_ERROR);
+  CHECK(feed_all(&p, connack_ok, sizeof connack_ok, &ev) == MQTT_EVT_CONNACK);   /* still in sync afterwards */
 }
 
 static void test_parse_publish(void)

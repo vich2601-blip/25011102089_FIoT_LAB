@@ -64,6 +64,7 @@ size_t mqtt_build_connect(uint8_t *buf, size_t size, const char *client_id,
   if (username && *username) { flags |= 0x80U; body += 2U + strlen(username); }
   if (password && *password) { flags |= 0x40U; body += 2U + strlen(password); }
   if (strlen(client_id) > 23U && !clean_session) return 0;  /* MQTT 3.1.1 rule */
+  if ((flags & 0x40U) && !(flags & 0x80U)) return 0;         /* password requires a username (3.1.2.9) */
 
   if (!put_header(&w, (uint8_t)(MQTT_PKT_CONNECT << 4), body)) return 0;
   put_str(&w, "MQTT");          /* protocol name  */
@@ -140,24 +141,29 @@ static mqtt_event_t decode_packet(mqtt_parser_t *p)
 
   switch (type)
   {
-    case MQTT_PKT_CONNACK:
-      if (n != 2U) return MQTT_EVT_ERROR;
+    case MQTT_PKT_CONNACK:                               /* 0x20 0x02 flags code */
+      if (p->header != 0x20U || n != 2U) return MQTT_EVT_ERROR;
+      if ((b[0] & 0xFEU) != 0U || b[1] > 5U) return MQTT_EVT_ERROR;   /* reserved bits / unknown code */
       p->code = b[1];                                   /* 0 = connection accepted */
       return MQTT_EVT_CONNACK;
 
-    case MQTT_PKT_SUBACK:
-      if (n < 3U) return MQTT_EVT_ERROR;
+    case MQTT_PKT_SUBACK:                                /* 0x90 len id_hi id_lo codes... */
+      if (p->header != 0x90U || n < 3U) return MQTT_EVT_ERROR;
       p->id = (uint16_t)((b[0] << 8) | b[1]);
+      if (p->id == 0U) return MQTT_EVT_ERROR;           /* packet identifier 0 is illegal */
+      for (uint32_t i = 2; i < n; i++)
+        if (b[i] > 2U && b[i] != 0x80U) return MQTT_EVT_ERROR;       /* only 0, 1, 2 or 0x80 */
       p->code = b[2];                                   /* granted QoS or 0x80 */
       return MQTT_EVT_SUBACK;
 
     case MQTT_PKT_PINGRESP:
-      return (n == 0U) ? MQTT_EVT_PINGRESP : MQTT_EVT_ERROR;
+      return (p->header == 0xD0U && n == 0U) ? MQTT_EVT_PINGRESP : MQTT_EVT_ERROR;
 
     case MQTT_PKT_PUBLISH:
     {
       uint8_t qos = (p->header >> 1) & 0x03U;
       if (qos == 3U || n < 2U) return MQTT_EVT_ERROR;
+      if (qos == 0U && (p->header & 0x08U)) return MQTT_EVT_ERROR;   /* DUP must be 0 for QoS 0 */
       uint32_t tlen = ((uint32_t)b[0] << 8) | b[1];
       uint32_t pos = 2U + tlen;
       if (tlen == 0U || pos > n) return MQTT_EVT_ERROR;            /* topic must fit the packet */

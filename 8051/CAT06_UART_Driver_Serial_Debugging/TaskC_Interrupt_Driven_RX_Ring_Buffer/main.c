@@ -18,9 +18,9 @@ sbit USER_LED = P1^0;
 
 #define LINE_MAX  32
 
-static void uart_put_uint(unsigned char v)
+static void uart_put_uint(unsigned int v)
 {
-    char digits[3];
+    char digits[5];
     unsigned char n = 0;
 
     do {
@@ -37,6 +37,7 @@ void main(void)
     unsigned char len = 0;
     unsigned int  idle = 0;
     char c;
+    unsigned int lost;
 
     uart_init();
     uart_puts("\r\nCAT6 Task C - interrupt UART + ring buffer\r\n> ");
@@ -48,15 +49,18 @@ void main(void)
             c = uart_getc();
             if (c == '\r' || c == '\n')
             {
+                if (len == 0)
+                    continue;               /* LF after CR (or a blank line): nothing to report */
                 line[len] = '\0';
                 uart_puts("\r\nGot ");
                 uart_put_uint(len);
                 uart_puts(" chars: ");
                 uart_puts(line);
-                if (uart_overflows())            /* report bytes lost to a full RX buffer */
+                lost = uart_overflows();
+                if (lost)                        /* report bytes lost to a full RX buffer */
                 {
                     uart_puts("  (bytes lost so far: ");
-                    uart_put_uint(uart_overflows());
+                    uart_put_uint(lost);
                     uart_puts(")");
                 }
                 uart_puts("\r\n> ");

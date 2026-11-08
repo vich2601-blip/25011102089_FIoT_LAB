@@ -6,7 +6,9 @@
  *
  *   T_machine = 12 / 11.0592 MHz = 1.085 us
  *   1 ms      = 1 ms / 1.085 us  = 922 counts
- *   preload   = 65536 - 922      = 64614 = 0xFC66  -> TH0 = 0xFC, TL0 = 0x66
+ *   preload   = 65536 - 922      = 64614 = 0xFC66
+ *   + 12 cycles for the interrupt entry (the timer restarts only after the
+ *   ISR reloads it)                       = 0xFC72  -> TH0 = 0xFC, TL0 = 0x72
  *
  * Timer 0 is in Mode 1 (16-bit), so it must be reloaded inside the ISR.
  * The main loop contains NO delay loop: the hardware generates the timing,

@@ -39,7 +39,7 @@ static uint16_t line_len;
 static uint32_t ipd_left;                      /* TCP bytes still expected from the current +IPD */
 
 /* ---- response flags (set by esp_pump) ---- */
-static volatile uint8_t got_ok, got_error, got_prompt, got_send_ok, got_send_fail, got_connect;
+static volatile uint8_t got_ok, got_error, got_prompt, got_send_ok, got_send_fail, got_connect, got_pingresp;
 static volatile bool    tcp_connected, mqtt_connected;
 
 /* ---- MQTT ---- */
@@ -91,8 +91,12 @@ static void on_mqtt_event(mqtt_event_t ev)
       suback_id = parser.id;
       suback_code = parser.code;
       break;
+    case MQTT_EVT_PINGRESP:
+      got_pingresp = 1;
+      break;
     case MQTT_EVT_PUBLISH:
-      if (msg_pending || parser.code != 0U) { msg_dropped++; break; }  /* busy or truncated */
+      if (msg_pending || parser.code != 0U ||                          /* busy or payload truncated */
+          strlen(parser.topic) >= sizeof(msg_topic)) { msg_dropped++; break; }   /* topic would not fit */
       strncpy(msg_topic, parser.topic, sizeof(msg_topic) - 1U);
       msg_topic[sizeof(msg_topic) - 1U] = '\0';
       {
@@ -252,8 +256,12 @@ funcState_t ESP8266_sendMessage(const uint8_t *msg, uint16_t msgSize)
   char cmd[24];
   if (msgSize == 0U || msgSize > 2048U) return funcErr;
   snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%u", msgSize);
-  got_prompt = 0; got_send_ok = 0; got_send_fail = 0;
-  if (at_cmd(cmd, T_CMD_MS) != funcOk && !got_prompt) return funcErr;
+  esp_pump();
+  got_prompt = 0; got_ok = 0; got_error = 0; got_send_ok = 0; got_send_fail = 0;
+  esp_write((const uint8_t *)cmd, (uint16_t)strlen(cmd));
+  esp_write((const uint8_t *)"\r\n", 2);
+  /* Espressif firmware answers "OK" then ">", some older firmware only ">":
+     wait for the prompt itself so neither case adds a delay. */
   if (!wait_until(&got_prompt, &got_error, T_CMD_MS)) return funcErr;
   esp_write(msg, msgSize);
   return wait_until(&got_send_ok, &got_send_fail, T_SEND_MS) ? funcOk : funcErr;
@@ -328,10 +336,18 @@ funcState_t MQTT_disconnectBroker(void)
   return ESP8266_sendMessage(txbuf, (uint16_t)n);
 }
 
+/* PINGREQ and wait for PINGRESP. No answer means the broker (or the path to
+   it) is gone even if the TCP link still looks open: mark it disconnected so
+   the application reconnects. */
 funcState_t MQTT_pingReq(void)
 {
   size_t n = mqtt_build_pingreq(txbuf, sizeof(txbuf));
-  return ESP8266_sendMessage(txbuf, (uint16_t)n);
+  got_pingresp = 0;
+  if (ESP8266_sendMessage(txbuf, (uint16_t)n) == funcOk &&
+      wait_until(&got_pingresp, NULL, T_ACK_MS))
+    return funcOk;
+  mqtt_connected = false;
+  return funcErr;
 }
 
 bool MQTT_isConnected(void)

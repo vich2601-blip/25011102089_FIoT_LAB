@@ -175,6 +175,8 @@ static void on_esp_event(const char *line)
       uint8_t n = 0;
       while (*src && *src != ' ' && n < sizeof(requests[link].path) - 1U)
         requests[link].path[n++] = *src++;
+      if (*src && *src != ' ')
+        n = 0;                     /* path longer than the buffer: never serve a truncated URL */
       requests[link].path[n] = '\0';
       requests[link].pending = 1;
     }
@@ -223,12 +225,18 @@ static void http_reply(uint8_t link, const char *status, const char *json)
                      status, content_length, json);
   if (len >= (int)sizeof(resp))
     len = sizeof(resp) - 1;
-  esp_at_send(link, resp, (uint16_t)len);
+  if (!esp_at_send(link, resp, (uint16_t)len))
+    dbg("[HTTP] send failed (link closed or ESP busy)\r\n");
   esp_at_close(link);
 }
 
 static void handle_request(uint8_t link, const char *path)
 {
+  if (path[0] == '\0')                           /* empty = URL was too long */
+  {
+    http_reply(link, "414 URI Too Long", "{\"status\":\"error\",\"message\":\"URI too long\"}");
+    return;
+  }
   char json[160];
   char msg[80];
 

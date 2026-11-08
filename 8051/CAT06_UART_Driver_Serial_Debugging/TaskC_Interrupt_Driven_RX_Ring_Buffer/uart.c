@@ -18,7 +18,7 @@
 static volatile unsigned char idata rx_buf[UART_RX_BUF_SIZE];
 static volatile unsigned char rx_head = 0;
 static volatile unsigned char rx_tail = 0;
-static volatile unsigned char rx_lost = 0;
+static volatile unsigned int  rx_lost = 0;    /* 16-bit: written by the ISR */
 static volatile unsigned char tx_busy = 0;   /* cleared by the ISR, polled by uart_putc() */
 
 void uart_isr(void) interrupt 4 using 2
@@ -86,7 +86,11 @@ char uart_getc(void)
     return c;
 }
 
-unsigned char uart_overflows(void)
+unsigned int uart_overflows(void)
 {
-    return rx_lost;
+    unsigned int n;
+    ES = 0;                       /* 16-bit read is two instructions on the 8051: */
+    n  = rx_lost;                 /* keep the ISR out so it cannot change mid-read */
+    ES = 1;
+    return n;
 }

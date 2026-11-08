@@ -60,6 +60,8 @@ static uint8_t  raw[512];
 static size_t   raw_len;
 static int      inject_publish_during_send;
 static int      broker_refuses;
+static int      broker_silent;         /* do not answer PINGREQ */
+static int      cipsend_ok_first = 1;  /* 1: "OK" then ">" (Espressif), 0: only ">" (older firmware) */
 static int      skip_lf;               /* the \n that ends an AT command line */
 
 static void broker_handle(const uint8_t *p, size_t n)
@@ -68,6 +70,7 @@ static void broker_handle(const uint8_t *p, size_t n)
   uint8_t type = p[0] >> 4;
   if (type == 1) { uint8_t ack[] = { 0x20, 0x02, 0x00, (uint8_t)(broker_refuses ? 5 : 0) }; esp_ipd(ack, sizeof ack); }
   if (type == 8) { uint8_t ack[] = { 0x90, 0x03, p[2], p[3], 0x00 }; esp_ipd(ack, sizeof ack); }
+  if (type == 12 && !broker_silent) { uint8_t ack[] = { 0xD0, 0x00 }; esp_ipd(ack, sizeof ack); }
 }
 
 HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *h, uint8_t *d, uint16_t n, uint32_t t)
@@ -96,7 +99,7 @@ HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *h, uint8_t *d, uint16_t 
     if (d[i] != '\r') { if (txline_len < sizeof txline - 1) txline[txline_len++] = (char)d[i]; continue; }
     txline[txline_len] = '\0'; txline_len = 0; skip_lf = 1;
     unsigned len;
-    if (sscanf(txline, "AT+CIPSEND=%u", &len) == 1) { expect_raw = len; raw_len = 0; esp_says_str("\r\nOK\r\n> "); }
+    if (sscanf(txline, "AT+CIPSEND=%u", &len) == 1) { expect_raw = len; raw_len = 0; esp_says_str(cipsend_ok_first ? "\r\nOK\r\n> " : "> "); }
     else if (strncmp(txline, "AT+CIPSTART", 11) == 0) esp_says_str("CONNECT\r\n\r\nOK\r\n");
     else if (strncmp(txline, "AT+CWJAP", 8) == 0) esp_says_str("WIFI CONNECTED\r\nWIFI GOT IP\r\n\r\nOK\r\n");
     else if (strcmp(txline, "AT+CIPCLOSE") == 0) esp_says_str("\r\nERROR\r\n");
@@ -137,6 +140,36 @@ int main(void)
   CHECK(MQTT_connectBroker(&cfg) == funcErr);
   CHECK(!MQTT_isConnected());
   CHECK(MQTT_publishTopic("a/data", "x", QoS0) == funcErr);   /* not connected -> refuses to send */
+
+  /* both CIPSEND reply styles work, and neither waits for a timeout */
+  broker_refuses = 0;
+  CHECK(MQTT_connectBroker(&cfg) == funcOk);
+  for (cipsend_ok_first = 1; cipsend_ok_first >= 0; cipsend_ok_first--)
+  {
+    uint32_t t0 = now_ms;
+    CHECK(MQTT_publishTopic("a/data", "x", QoS0) == funcOk);
+    CHECK(now_ms - t0 < 200);                                   /* no hidden 2 s wait */
+  }
+  cipsend_ok_first = 1;
+
+  /* PINGREQ: answered -> ok; broker silent -> error and marked disconnected */
+  CHECK(MQTT_pingReq() == funcOk && MQTT_isConnected());
+  broker_silent = 1;
+  CHECK(MQTT_pingReq() == funcErr);
+  CHECK(!MQTT_isConnected());
+  broker_silent = 0;
+
+  /* a topic longer than MQTT_TOPIC_MAX is dropped, not silently truncated */
+  CHECK(MQTT_connectBroker(&cfg) == funcOk);
+  {
+    uint8_t pub[2 + 2 + 70 + 2];
+    pub[0] = 0x30; pub[1] = 2 + 70 + 2; pub[2] = 0; pub[3] = 70;
+    memset(&pub[4], 't', 70); pub[74] = 'h'; pub[75] = 'i';
+    uint32_t dropped0 = MQTT_droppedMessages();
+    esp_ipd(pub, sizeof pub); deliver_all();
+    CHECK(MQTTDataHandler(topic, msg) == 0);
+    CHECK(MQTT_droppedMessages() == dropped0 + 1);
+  }
 
   CHECK(ESP8266_rxOverflows() == 0);
   printf("ESPLib: %d checks, %d failures\n", checks, failures);

@@ -90,6 +90,22 @@ static void dbg(const char *s)
   HAL_UART_Transmit(DBG_UART, (uint8_t *)s, (uint16_t)strlen(s), 200);
 }
 
+/* Print the library's error counters whenever they change */
+static void report_diagnostics(void)
+{
+  static uint32_t last_ovf = 0, last_drop = 0;
+  uint32_t ovf = ESP8266_rxOverflows(), drop = MQTT_droppedMessages();
+  if (ovf != last_ovf || drop != last_drop)
+  {
+    char line[80];
+    snprintf(line, sizeof(line), "[diag] UART RX overflow bytes: %lu, dropped MQTT packets: %lu\r\n",
+             (unsigned long)ovf, (unsigned long)drop);
+    dbg(line);
+    last_ovf = ovf;
+    last_drop = drop;
+  }
+}
+
 /* Wi-Fi + TCP + MQTT CONNECT. Every step is checked; returns 1 only when the
  * broker has answered CONNACK "accepted". Optional broker login: define
  * MQTT_USERNAME / MQTT_PASSWORD in wifi_secrets.h. */
@@ -246,6 +262,7 @@ int main(void)
     int  ok = bme_read();
 
     build_json(json, sizeof(json), ok);
+    report_diagnostics();
     if (!MQTT_isConnected())
     {
       dbg("Connection lost - reconnecting\r\n");
