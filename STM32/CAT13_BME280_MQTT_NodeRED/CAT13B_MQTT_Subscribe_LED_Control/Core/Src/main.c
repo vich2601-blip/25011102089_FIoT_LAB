@@ -39,6 +39,7 @@
 #define MQTT_BROKER       "broker.emqx.io"   /* public test broker            */
 #define MQTT_PORT         "1883"             /* plain (unencrypted) MQTT      */
 #define CMD_TOPIC         "vishrudh/stm32/led"
+#define RETRY_MS          5000U              /* wait before reconnecting      */
 #define CLIENT_ID         "stm32-vishrudh-sub"
 #define PING_PERIOD_MS    60000U             /* keep the connection alive */
 #define LED_PORT          GPIOA              /* LD2 on PA5, active-high   */
@@ -56,8 +57,8 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-char mqttTopic[48];
-char mqttData[64];
+char mqttTopic[MQTT_TOPIC_MAX];    /* sizes required by MQTTDataHandler() */
+char mqttData[MQTT_MSG_MAX];
 static uint32_t last_ping = 0;
 /* USER CODE END PV */
 
@@ -78,27 +79,42 @@ static void dbg(const char *s)
   HAL_UART_Transmit(DBG_UART, (uint8_t *)s, (uint16_t)strlen(s), 200);
 }
 
-/* Wi-Fi + TCP + MQTT CONNECT using the course ESP8266 library.
- * Each ESP8266_xxx() call retries until the ESP8266 answers OK. */
-static void mqtt_start(const char *client_id)
+/* Wi-Fi + TCP + MQTT CONNECT. Every step is checked; returns 1 only when the
+ * broker has answered CONNACK "accepted". Optional broker login: define
+ * MQTT_USERNAME / MQTT_PASSWORD in wifi_secrets.h. */
+static int mqtt_start(const char *client_id)
 {
   MQTT_InitTypeDef_t cfg;
 
   dbg("ESP8266 init (station mode)...\r\n");
-  ESP8266_Init(StationMode, huart1);
+  if (ESP8266_Init(StationMode, huart1) != funcOk) { dbg("  ESP8266 not responding\r\n"); return 0; }
   dbg("Joining " WIFI_SSID "...\r\n");
-  ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD);
+  if (ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD) != funcOk) { dbg("  Wi-Fi join failed\r\n"); return 0; }
   dbg("TCP connect to " MQTT_BROKER ":" MQTT_PORT "...\r\n");
-  ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT);
+  if (ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT) != funcOk) { dbg("  TCP connect failed\r\n"); return 0; }
 
   memset(&cfg, 0, sizeof(cfg));
-  cfg.keepAlive   = 500;                 /* seconds          */
+  cfg.keepAlive   = 120;                 /* seconds; PINGREQ / publishes keep it alive */
   cfg.connectFlag = CleanSession;        /* no stored session */
   cfg.clientID    = (char *)client_id;
-  MQTT_connectBroker(&cfg);              /* CONNECT packet: 0x10, len, "MQTT", 4, flags, keep-alive, id */
-  dbg("MQTT connected as ");
+#if defined(MQTT_USERNAME) && defined(MQTT_PASSWORD)
+  cfg.username     = MQTT_USERNAME;
+  cfg.password     = MQTT_PASSWORD;
+  cfg.connectFlag |= UserNameFlag | PasswordFlag;
+#endif
+  if (MQTT_connectBroker(&cfg) != funcOk) { dbg("  broker refused / no CONNACK\r\n"); return 0; }
+  dbg("MQTT connected (CONNACK accepted) as ");
   dbg(client_id);
   dbg("\r\n");
+  return 1;
+}
+
+/* SUBSCRIBE and check the SUBACK (0x80 = refused by the broker) */
+static int subscribe_commands(void)
+{
+  if (MQTT_subscribeTopic(CMD_TOPIC, QoS0) != funcOk) { dbg("  SUBSCRIBE refused / no SUBACK\r\n"); return 0; }
+  dbg("Subscribed to " CMD_TOPIC " (SUBACK ok)\r\n");
+  return 1;
 }
 
 static void led_init(void)
@@ -120,6 +136,7 @@ static void handle_message(const char *topic, const char *msg)
   dbg(msg);
   dbg("\r\n");
 
+  /* only these exact commands are accepted; anything else is ignored */
   if (strcmp(msg, "ON") == 0)          HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_SET);
   else if (strcmp(msg, "OFF") == 0)    HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_RESET);
   else if (strcmp(msg, "TOGGLE") == 0) HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
@@ -161,9 +178,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   led_init();
   dbg("\r\nCAT13B - MQTT subscribe: publish ON / OFF / TOGGLE to " CMD_TOPIC "\r\n");
-  mqtt_start(CLIENT_ID);
-  MQTT_subscribeTopic(CMD_TOPIC, QoS0);
-  HAL_UART_Receive_IT(&huart1, &uartRxData, 1);     /* start receiving broker packets */
+  while (!(mqtt_start(CLIENT_ID) && subscribe_commands()))
+    HAL_Delay(RETRY_MS);
   last_ping = HAL_GetTick();
   /* USER CODE END 2 */
 
@@ -174,12 +190,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    MQTTDataHandler(mqttTopic, mqttData);            /* fills topic/data when a packet is complete */
-    if (mqttData[0] != '\0')
-    {
+    if (MQTTDataHandler(mqttTopic, mqttData))        /* 1 = a complete, validated PUBLISH arrived */
       handle_message(mqttTopic, mqttData);
-      mqttData[0]  = '\0';
-      mqttTopic[0] = '\0';
+
+    if (!MQTT_isConnected())
+    {
+      dbg("Connection lost - reconnecting\r\n");
+      while (!(mqtt_start(CLIENT_ID) && subscribe_commands()))
+        HAL_Delay(RETRY_MS);
+      last_ping = HAL_GetTick();
     }
 
     if ((HAL_GetTick() - last_ping) >= PING_PERIOD_MS)

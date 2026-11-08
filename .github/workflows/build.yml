@@ -21,3 +21,6 @@ jobs:
 
       - name: Build 8051 projects (15)
         run: tools/build_all.sh 8051
+
+      - name: Host-side unit tests (MQTT parser, ESPLib with simulated ESP8266)
+        run: make -C tests

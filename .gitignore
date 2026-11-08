@@ -33,3 +33,6 @@ Thumbs.db
 
 # ---------- Local secrets ----------
 **/wifi_secrets.h
+tests/test_mqtt_packet
+tests/*.dSYM/
+tests/test_esplib

@@ -39,6 +39,7 @@
 #define MQTT_BROKER       "broker.emqx.io"   /* public test broker            */
 #define MQTT_PORT         "1883"             /* plain (unencrypted) MQTT      */
 #define TEST_TOPIC        "vishrudh/stm32/test"
+#define RETRY_MS          5000U              /* wait before reconnecting      */
 #define CLIENT_ID         "stm32-vishrudh-test"
 /* USER CODE END PD */
 
@@ -73,27 +74,34 @@ static void dbg(const char *s)
   HAL_UART_Transmit(DBG_UART, (uint8_t *)s, (uint16_t)strlen(s), 200);
 }
 
-/* Wi-Fi + TCP + MQTT CONNECT using the course ESP8266 library.
- * Each ESP8266_xxx() call retries until the ESP8266 answers OK. */
-static void mqtt_start(const char *client_id)
+/* Wi-Fi + TCP + MQTT CONNECT. Every step is checked; returns 1 only when the
+ * broker has answered CONNACK "accepted". Optional broker login: define
+ * MQTT_USERNAME / MQTT_PASSWORD in wifi_secrets.h. */
+static int mqtt_start(const char *client_id)
 {
   MQTT_InitTypeDef_t cfg;
 
   dbg("ESP8266 init (station mode)...\r\n");
-  ESP8266_Init(StationMode, huart1);
+  if (ESP8266_Init(StationMode, huart1) != funcOk) { dbg("  ESP8266 not responding\r\n"); return 0; }
   dbg("Joining " WIFI_SSID "...\r\n");
-  ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD);
+  if (ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD) != funcOk) { dbg("  Wi-Fi join failed\r\n"); return 0; }
   dbg("TCP connect to " MQTT_BROKER ":" MQTT_PORT "...\r\n");
-  ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT);
+  if (ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT) != funcOk) { dbg("  TCP connect failed\r\n"); return 0; }
 
   memset(&cfg, 0, sizeof(cfg));
-  cfg.keepAlive   = 500;                 /* seconds          */
+  cfg.keepAlive   = 120;                 /* seconds; PINGREQ / publishes keep it alive */
   cfg.connectFlag = CleanSession;        /* no stored session */
   cfg.clientID    = (char *)client_id;
-  MQTT_connectBroker(&cfg);              /* CONNECT packet: 0x10, len, "MQTT", 4, flags, keep-alive, id */
-  dbg("MQTT connected as ");
+#if defined(MQTT_USERNAME) && defined(MQTT_PASSWORD)
+  cfg.username     = MQTT_USERNAME;
+  cfg.password     = MQTT_PASSWORD;
+  cfg.connectFlag |= UserNameFlag | PasswordFlag;
+#endif
+  if (MQTT_connectBroker(&cfg) != funcOk) { dbg("  broker refused / no CONNACK\r\n"); return 0; }
+  dbg("MQTT connected (CONNACK accepted) as ");
   dbg(client_id);
   dbg("\r\n");
+  return 1;
 }
 /* USER CODE END 0 */
 
@@ -131,7 +139,7 @@ int main(void)
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
   dbg("\r\nCAT13A - MQTT publish test\r\n");
-  mqtt_start(CLIENT_ID);
+  while (!mqtt_start(CLIENT_ID)) HAL_Delay(RETRY_MS);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -143,7 +151,13 @@ int main(void)
     /* USER CODE BEGIN 3 */
     char payload[48];
     snprintf(payload, sizeof(payload), "hello #%lu from STM32 Nucleo", (unsigned long)++msg_no);
-    MQTT_publishTopic(TEST_TOPIC, payload, QoS0);    /* PUBLISH: 0x30, len, topic len, topic, message */
+    if (!MQTT_isConnected())
+    {
+      dbg("Connection lost - reconnecting\r\n");
+      while (!mqtt_start(CLIENT_ID)) HAL_Delay(RETRY_MS);
+    }
+    if (MQTT_publishTopic(TEST_TOPIC, payload, QoS0) != funcOk)   /* PUBLISH: 0x30, length, topic, message */
+      dbg("PUB failed: ");
     dbg("PUB " TEST_TOPIC " : ");
     dbg(payload);
     dbg("\r\n");

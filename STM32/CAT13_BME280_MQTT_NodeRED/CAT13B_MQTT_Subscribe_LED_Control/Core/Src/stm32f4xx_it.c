@@ -184,7 +184,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-  MQTTTimer();          /* marks the end of an incoming MQTT packet (100 ms of silence) */
+  MQTTTimer();          /* lab-sheet hook; a no-op in the reworked ESPLib (packets are length-delimited) */
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
