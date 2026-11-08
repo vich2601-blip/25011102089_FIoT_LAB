@@ -30,3 +30,6 @@ Release/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# ---------- Local secrets ----------
+**/wifi_secrets.h

@@ -67,7 +67,7 @@ Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib (fixed), helpers
 
 **8051:** flash the ready `Objects/*.hex` with progisp, or open the task's `.uvproj` in Keil µVision → **Build (F7)** to rebuild it. (Included HEX files were built with SDCC 4.6 and timing-checked in the uCsim simulator — see `8051/README.md`.)
 
-**STM32:** STM32CubeIDE → **File → Import → General → Existing Projects into Workspace** → select the project folder → **Build** → **Run → Debug As → STM32 C/C++ Application**. Wi-Fi projects (CAT 10C, 10D, 12B, 13) read the network name and password from `Core/Inc/wifi_config.h`.
+**STM32:** STM32CubeIDE → **File → Import → General → Existing Projects into Workspace** → select the project folder → **Build** → **Run → Debug As → STM32 C/C++ Application**. Wi-Fi projects (CAT 10C, 10D, 12B, 13) read the network name and password from `Core/Inc/wifi_secrets.h`, which is git-ignored so credentials are never committed. Create it next to `wifi_config.h` with `#define WIFI_SSID "..."` and `#define WIFI_PASSWORD "..."`; without it the project builds with placeholders.
 
 **Node-RED:** Menu → Import → choose the `NodeRED_*.json` file → Deploy.
 

@@ -23,7 +23,7 @@
 | PA2 USART2_TX / PA3 USART2_RX | USB-to-TTL RX / TX | PC terminal |
 | GND | all GNDs | common ground |
 
-Both UARTs 115200-8-N-1. Wi-Fi network in `Core/Inc/wifi_config.h`.
+Both UARTs 115200-8-N-1. Wi-Fi credentials go in `Core/Inc/wifi_secrets.h` (git-ignored; see `wifi_config.h` for the format).
 
 ---
 
