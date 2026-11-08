@@ -1,0 +1,23 @@
+name: Build all projects
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchains (arm-none-eabi-gcc, newlib, SDCC)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi sdcc
+
+      - name: Build STM32 projects (17)
+        run: tools/build_all.sh stm32
+
+      - name: Build 8051 projects (15)
+        run: tools/build_all.sh 8051
