@@ -22,8 +22,8 @@
 #include "delay.h"
 
 #define STEP_MASK     0x0F               /* motor on P1.0..P1.3 */
-#define T0_RELOAD_H   0xFC               /* 1 ms at 11.0592 MHz */
-#define T0_RELOAD_L   0x66
+#define T0_RELOAD_H   0xFC               /* 1 ms at 11.0592 MHz:              */
+#define T0_RELOAD_L   0x72               /* 0xFC66 + 12 cycles ISR latency    */
 
 #define SLOW_MS       100
 #define MEDIUM_MS     50

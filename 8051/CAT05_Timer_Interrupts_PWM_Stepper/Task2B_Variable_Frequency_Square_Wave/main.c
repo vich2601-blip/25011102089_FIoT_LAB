@@ -26,7 +26,7 @@ sbit KEY_SENSE  = P2^0;
 sbit KEY_DRIVE  = P2^5;
 
 #define NUM_MODES     5
-#define ISR_LATENCY   8          /* machine cycles, tune on the DSO */
+#define ISR_LATENCY   12         /* machine cycles (measured in uCsim), fine-tune on the DSO */
 
 /* half-period counts for 100 Hz, 500 Hz, 1 kHz, 2 kHz, 5 kHz */
 unsigned int  code HALF_PERIOD[NUM_MODES] = { 4608, 922, 461, 230, 92 };

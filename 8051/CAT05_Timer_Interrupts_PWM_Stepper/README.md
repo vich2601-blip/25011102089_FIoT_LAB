@@ -16,7 +16,7 @@ Crystal 11.0592 MHz → machine cycle 1.085 µs → Timer 0 → overflow → **i
 
 | Time base | Counts | Setting |
 |---|---|---|
-| 1 ms | 922 | Mode 1, TH0:TL0 = 0xFC66, reloaded in the ISR |
+| 1 ms | 922 | Mode 1, TH0:TL0 = 0xFC66 (+12 for ISR entry → 0xFC72), reloaded in the ISR |
 | 100 µs | 92 | Mode 2 auto-reload, TH0 = 0xA4 |
 
 ---

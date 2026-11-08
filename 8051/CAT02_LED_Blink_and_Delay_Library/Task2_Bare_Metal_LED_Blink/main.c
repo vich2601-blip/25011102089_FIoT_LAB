@@ -17,15 +17,19 @@ sbit USER_LED = P1^0;           /* on-board LED                         */
 #define LED_OFF   1
 
 /* Number of outer-loop passes for ~0.5 s.
- * One outer pass = 230 inner passes x ~3 cycles = ~690 cycles = ~0.75 ms
- * 0.5 s / 0.75 ms = ~666  -> tuned to 650 to allow for loop overhead.  */
-#define HALF_PERIOD_PASSES   650
+ * The inner counter is volatile, so every pass really executes:
+ * one outer pass = ~2086 machine cycles (230 inner passes x ~9 cycles)
+ *                = 2.26 ms at 1.085 us per cycle
+ * 0.5 s / 2.26 ms = 221 passes  (measured in the uCsim 8051 simulator)   */
+#define HALF_PERIOD_PASSES   221
 
-/* Simple software-loop delay (blocking) */
-static void soft_delay(unsigned int passes)
+/* Simple software-loop delay (blocking).
+ * Not "static": a static function with no side effects may be removed by an
+ * optimising compiler, which would make the LED toggle too fast to see.   */
+void soft_delay(unsigned int passes)
 {
     unsigned int  i;
-    unsigned char j;
+    volatile unsigned char j;   /* volatile: the compiler must really run the loop */
 
     for (i = 0; i < passes; i++)
     {

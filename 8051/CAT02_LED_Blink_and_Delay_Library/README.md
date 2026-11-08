@@ -57,7 +57,7 @@ The board was powered, identified and programmed from the PC, so the tool chain 
 **Project folder:** [`Task2_Bare_Metal_LED_Blink`](Task2_Bare_Metal_LED_Blink/)
 
 ### Working principle
-`sbit USER_LED = P1^0;` maps the LED onto bit 0 of the Port-1 SFR (0x90). The 8051 has no direction register, so writing the bit drives the pin. A nested software loop gives about 0.5 s: 650 × 230 passes × ~3 cycles × 1.085 µs.
+`sbit USER_LED = P1^0;` maps the LED onto bit 0 of the Port-1 SFR (0x90). The 8051 has no direction register, so writing the bit drives the pin. A nested software loop gives about 0.5 s: the inner counter is `volatile` so an optimising compiler cannot delete the loop; one outer pass ≈ 2086 cycles (2.26 ms, measured in the uCsim simulator) and 221 passes ≈ 0.5 s.
 
 ### Pseudocode
 1. Include `reg52.h`.
@@ -67,7 +67,7 @@ The board was powered, identified and programmed from the PC, so the tool chain 
 5. Repeat forever.
 
 ### Code base
-- `main.c` — `soft_delay(HALF_PERIOD_PASSES)` with `HALF_PERIOD_PASSES = 650`
+- `main.c` — `soft_delay(HALF_PERIOD_PASSES)` with `HALF_PERIOD_PASSES = 221`
 - `Task2_Bare_Metal_LED_Blink.uvproj`, `STARTUP.A51`
 
 ### Inference
@@ -80,7 +80,7 @@ The LED blinks at about 1 Hz using only direct SFR access and a software loop.
 **Project folder:** [`Task3_Custom_Delay_Library`](Task3_Custom_Delay_Library/)
 
 ### Working principle
-The delay is moved into `delay.h` / `delay.c`. `delay_ms(n)` repeats a ~1 ms block (2 × 153 passes × 3 cycles ≈ 920 cycles ≈ 1 ms). `delay_50us()` is added for short device timings (used later by the LCD driver).
+The delay is moved into `delay.h` / `delay.c`. `delay_ms(n)` repeats a ~1 ms block (two DJNZ loops of 228 passes + overhead = 12 + 4 × 228 = 924 cycles ≈ 1.003 ms). `delay_50us()` is added for short device timings (used later by the LCD driver).
 
 ### Pseudocode
 1. Declare `delay_ms()` and `delay_50us()` in `delay.h`.

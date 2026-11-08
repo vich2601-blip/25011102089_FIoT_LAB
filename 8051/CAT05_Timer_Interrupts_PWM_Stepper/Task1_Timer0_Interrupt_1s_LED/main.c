@@ -20,7 +20,9 @@
 sbit LED = P1^1;
 
 #define T0_RELOAD_H   0xFC
-#define T0_RELOAD_L   0x66
+#define T0_RELOAD_L   0x72   /* 0xFC66 + 12: the timer restarts only when the ISR
+                                   reloads it, so the ~12-cycle interrupt entry is
+                                   added back (measured in uCsim: 1.000 s per toggle) */
 #define MS_PER_SECOND 1000
 
 volatile unsigned int ms_ticks   = 0;   /* only touched inside the ISR   */

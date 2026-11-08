@@ -5,8 +5,8 @@
 #include "delay.h"
 
 /* One pass of the outer loop takes about 1 ms:
- * two inner loops x 153 passes x ~3 machine cycles = ~920 cycles
- * 920 x 1.085 us = ~1.0 ms                                       */
+ * two inner loops of DELAY_1MS_INNER passes, each pass one DJNZ (2 cycles),
+ * plus ~12 cycles of loop overhead = 12 + 4 x 228 = 924 cycles = 1.003 ms */
 void delay_ms(unsigned int ms)
 {
     unsigned int  i;
@@ -19,13 +19,13 @@ void delay_ms(unsigned int ms)
     }
 }
 
-/* ~50 us per count: 15 passes x 3 cycles = 45 cycles + call overhead */
+/* ~50 us per count: 9 cycles overhead + 18 DJNZ passes x 2 = 45 cycles = 48.8 us */
 void delay_50us(unsigned char n)
 {
     unsigned char j;
 
     while (n--)
     {
-        for (j = 0; j < 15; j++);
+        for (j = 0; j < 18; j++);
     }
 }
