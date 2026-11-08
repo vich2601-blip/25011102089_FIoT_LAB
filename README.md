@@ -1,5 +1,7 @@
 # FIoT Lab — 8051 and STM32 Embedded / IoT Experiments
 
+[![Build all projects](https://github.com/vich2601-blip/FIoT-Lab-25CS2741/actions/workflows/build.yml/badge.svg)](https://github.com/vich2601-blip/FIoT-Lab-25CS2741/actions/workflows/build.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+
 Lab work for **25CS2741 Fundamentals of Internet of Things + Lab** — B.Tech CSE (IoT), Semester 3, Shiv Nadar University Chennai.
 
 The work goes from register-level C on the **8051**, to **STM32** with CubeMX and the HAL, and ends with a networked sensor node: an STM32 reads a **BME280** over I²C and shares the data over Wi-Fi through an **ESP8266**, first as an **HTTP/JSON** server and then over **MQTT** into **Node-RED**.
@@ -27,6 +29,46 @@ Every experiment folder has a `README.md` with the experiment details, a **circu
 | 11 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [CAT11](STM32/CAT11_GPIO_User_Input/) |
 | 12 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [CAT12](STM32/CAT12_BME280_I2C_HTTP_NodeRED/) |
 | 13 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [CAT13](STM32/CAT13_BME280_MQTT_NodeRED/) |
+
+## System architecture (final experiments)
+
+```mermaid
+flowchart LR
+    BME["BME280<br/>temp / pressure / humidity"] -- "I²C 0x76<br/>PB6 / PB7" --> MCU["STM32 NUCLEO-F401RE<br/>Bosch BME280 API<br/>JSON payload"]
+    MCU -- "UART1 115200<br/>AT commands" --> ESP["ESP8266<br/>Wemos D1 mini"]
+    MCU -. "UART6 debug" .-> PC["PuTTY"]
+    ESP -- "Wi-Fi / TCP :80<br/>HTTP GET → JSON (CAT 12)" --> HTTP["Browser /<br/>Node-RED http request"]
+    ESP -- "Wi-Fi / TCP :1883<br/>MQTT PUBLISH (CAT 13)" --> BROKER["MQTT broker<br/>broker.emqx.io"]
+    BROKER -- "mqtt in" --> NR["Node-RED<br/>gauges, chart,<br/>min / max / avg"]
+    NR -- "mqtt out: ON / OFF / TOGGLE" --> BROKER
+```
+
+## Skills demonstrated
+
+| Area | Where |
+|---|---|
+| Bare-metal register programming (SFRs, `sbit`, no libraries) | CAT 2 – 4 |
+| Hardware timers and interrupt service routines, software PWM | CAT 5, 6 |
+| Device drivers written from datasheets (UART, HD44780 LCD) | CAT 6, 7 |
+| Debouncing and non-blocking state machines | CAT 3, 8, 11 |
+| STM32CubeMX configuration, clock trees, HAL | CAT 8 – 13 |
+| UART protocols, ring buffers, interrupt-driven receive | CAT 6C, 10D, 12B |
+| I²C sensor integration with a vendor API | CAT 12, 13 |
+| ESP8266 AT command interface, TCP server, raw HTTP | CAT 10, 12 |
+| MQTT CONNECT / PUBLISH / SUBSCRIBE packets | CAT 13 |
+| Node-RED flows, dashboards and statistics | CAT 12, 13 |
+| Build automation and CI | `tools/build_all.sh`, GitHub Actions |
+
+## Verification status
+
+| What | How it was checked | Result |
+|---|---|---|
+| All 17 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors, 0 warnings — see [`docs/build-log.txt`](docs/build-log.txt) |
+| All 15 8051 projects | compiled with SDCC 4.6 from the Keil sources | 0 errors; committed HEX files match the sources |
+| 8051 timing | measured in the uCsim 8051 simulator at 11.0592 MHz | CAT 2 blink 1.000 s, `delay_ms()` 1.003 ms, CAT 5 timer tick 1.000 s, 100 Hz mode 100.2 Hz |
+| Node-RED flows | JSON structure and wiring validated, function code syntax-checked | valid |
+| Memory use | linker map | largest Blue Pill build 7.8 KB of 32 KB flash; largest Nucleo build 31.5 KB of 512 KB |
+| Behaviour on real hardware | to be recorded in each experiment's **Observation** table | pending |
 
 ## Hardware
 
@@ -75,7 +117,11 @@ Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib (fixed), helpers
 
 * Application code sits inside CubeMX `USER CODE` blocks, so *Generate Code* in CubeMX keeps it.
 * Floats are printed with integer maths (`fmt_fixed.h`) because newlib-nano has no `%f` by default.
-* Every STM32 project builds with the STM32CubeIDE GCC toolchain with no warnings.
+* Every project builds from the command line: `tools/build_all.sh` (also run by GitHub Actions on every push).
+
+## Licence
+
+Original work: MIT — see [`LICENSE`](LICENSE). Third-party components keep their own licences — see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Third-party code
 
