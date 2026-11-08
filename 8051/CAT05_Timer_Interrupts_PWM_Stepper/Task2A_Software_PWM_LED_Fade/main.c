@@ -25,7 +25,7 @@ sbit PWM_LED = P1^1;
 volatile unsigned char duty       = 0;   /* 0..10 */
 volatile unsigned char pwm_slot   = 0;
 volatile unsigned int  step_ticks = 0;
-bit           step_flag  = 0;
+volatile unsigned char step_flag = 0;   /* set by the ISR, cleared by main() */
 
 void timer0_isr(void) interrupt 1 using 1
 {

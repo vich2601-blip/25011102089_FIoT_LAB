@@ -45,10 +45,15 @@ static void set_mode(unsigned char mode)       /* mode = 0..4 */
 {
     unsigned int reload = 65536 - HALF_PERIOD[mode] + ISR_LATENCY;
 
-    ET0 = 0;                     /* update both bytes without the ISR running */
+    TR0 = 0;                     /* stop Timer 0 so the change takes effect at once  */
+    ET0 = 0;                     /* and update both bytes without the ISR running     */
     reload_h = reload >> 8;
     reload_l = reload & 0xFF;
+    TH0 = reload_h;              /* start the new half-period from a clean reload     */
+    TL0 = reload_l;
+    TF0 = 0;
     ET0 = 1;
+    TR0 = 1;
 
     P0 = SEG_CODE[mode + 1];     /* show 1..5 */
 }
@@ -77,12 +82,8 @@ void main(void)
     KEY_SENSE = 1;
 
     TMOD = (TMOD & 0xF0) | 0x01;     /* Timer 0, Mode 1 (16-bit) */
-    set_mode(mode);
-    TH0 = reload_h;
-    TL0 = reload_l;
-    ET0 = 1;
     EA  = 1;
-    TR0 = 1;
+    set_mode(mode);                  /* loads TH0/TL0, enables ET0 and starts Timer 0 */
 
     while (1)
     {

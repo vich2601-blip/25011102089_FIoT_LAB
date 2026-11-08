@@ -101,7 +101,9 @@ static int8_t bme_setup(uint8_t osr, uint8_t filter, uint8_t standby)
   if (r != BME280_OK)
     return r;
 
-  r = bme280_get_sensor_settings(&bme_cfg, &bme);
+  r = bme280_get_sensor_settings(&bme_cfg, &bme);   /* start from the current settings */
+  if (r != BME280_OK)
+    return r;
   bme_cfg.osr_t        = osr;            /* temperature oversampling */
   bme_cfg.osr_p        = osr;            /* pressure oversampling    */
   bme_cfg.osr_h        = osr;            /* humidity oversampling    */

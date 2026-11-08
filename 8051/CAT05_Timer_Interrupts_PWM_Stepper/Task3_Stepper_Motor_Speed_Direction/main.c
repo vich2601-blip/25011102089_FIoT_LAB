@@ -36,8 +36,8 @@ unsigned char code KEYMAP[3][3] = { {1,2,3}, {4,5,6}, {7,8,9} };
 volatile unsigned char step_ms   = SLOW_MS;  /* current speed            */
 volatile unsigned char ms_count  = 0;
 volatile unsigned char phase     = 0;        /* 0..3 index into STEP_SEQ */
-bit           clockwise = 1;
-bit           running   = 1;
+volatile unsigned char clockwise = 1;   /* written by main(), read by the ISR */
+volatile unsigned char running   = 1;
 
 void timer0_isr(void) interrupt 1 using 1
 {

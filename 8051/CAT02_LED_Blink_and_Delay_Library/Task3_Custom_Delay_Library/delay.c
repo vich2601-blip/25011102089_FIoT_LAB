@@ -5,12 +5,12 @@
 #include "delay.h"
 
 /* One pass of the outer loop takes about 1 ms:
- * two inner loops of DELAY_1MS_INNER passes, each pass one DJNZ (2 cycles),
- * plus ~12 cycles of loop overhead = 12 + 4 x 228 = 924 cycles = 1.003 ms */
+ * two inner loops of DELAY_1MS_INNER passes x 9 cycles + ~22 cycles overhead
+ * = 22 + 18 x 50 = 922 cycles = 1.000 ms at 11.0592 MHz */
 void delay_ms(unsigned int ms)
 {
     unsigned int  i;
-    unsigned char j;
+    volatile unsigned char j;   /* volatile: no optimiser may remove the loop */
 
     for (i = 0; i < ms; i++)
     {
@@ -19,13 +19,13 @@ void delay_ms(unsigned int ms)
     }
 }
 
-/* ~50 us per count: 9 cycles overhead + 18 DJNZ passes x 2 = 45 cycles = 48.8 us */
+/* ~52 us per count: 12 cycles overhead + 4 passes x 9 = 48 cycles (HD44780 needs >= 37 us) */
 void delay_50us(unsigned char n)
 {
-    unsigned char j;
+    volatile unsigned char j;
 
     while (n--)
     {
-        for (j = 0; j < 18; j++);
+        for (j = 0; j < 4; j++);
     }
 }

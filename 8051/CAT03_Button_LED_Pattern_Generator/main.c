@@ -21,8 +21,9 @@
  * Design notes
  *  - The main loop runs every 10 ms, so the button is checked 100 times a
  *    second even while a pattern is running (no long blocking delays).
- *  - Debouncing: a change in the key level is accepted only if it is still
- *    there 20 ms later.
+ *  - Debouncing: the key is sampled once per 10 ms loop and a new level is
+ *    accepted only after it has been seen DEBOUNCE_SAMPLES times in a row
+ *    (2 x 10 ms = 20 ms). No delay is used inside the debounce itself.
  *  - Edge detection: the mode only changes on the RELEASED -> PRESSED edge,
  *    so holding the key down does not keep changing the mode.
  */
@@ -48,7 +49,7 @@ sbit LED4 = P1^7;
 
 #define LOOP_MS          10     /* main loop period                  */
 #define STEP_LOOPS       30     /* 30 x 10 ms = 300 ms per pattern step */
-#define DEBOUNCE_MS      20
+#define DEBOUNCE_SAMPLES 2      /* 2 consecutive 10 ms samples = 20 ms */
 
 /* Write a 4-bit pattern to the LEDs: bit3 -> LED1 ... bit0 -> LED4 */
 static void leds_write(unsigned char pattern)
@@ -59,23 +60,25 @@ static void leds_write(unsigned char pattern)
     LED4 = pattern & 1;
 }
 
-/* Returns 1 exactly once per physical press (debounced press edge) */
+/* Call once per 10 ms loop. Returns 1 exactly once per physical press.
+ * Non-blocking: a level change must be seen DEBOUNCE_SAMPLES times in a row. */
 static bit button_pressed_event(void)
 {
-    static bit stable_pressed = 0;      /* last accepted (debounced) level */
+    static bit stable_pressed = 0;      /* last accepted (debounced) level   */
+    static unsigned char same_count = 0;
     bit raw_pressed = (KEY_SENSE == 0);
 
-    if (raw_pressed != stable_pressed)
+    if (raw_pressed == stable_pressed)
     {
-        delay_ms(DEBOUNCE_MS);           /* let the contacts settle       */
-        if ((KEY_SENSE == 0) == raw_pressed)
-        {
-            stable_pressed = raw_pressed;
-            if (stable_pressed)
-                return 1;               /* new press accepted            */
-        }
+        same_count = 0;                 /* no change: nothing to confirm     */
+        return 0;
     }
-    return 0;
+    if (++same_count < DEBOUNCE_SAMPLES)
+        return 0;                       /* changed, but not stable long enough */
+
+    same_count = 0;
+    stable_pressed = raw_pressed;       /* change confirmed                  */
+    return stable_pressed;              /* 1 only on the press edge          */
 }
 
 /* Compute the LED pattern for the given mode and step number */

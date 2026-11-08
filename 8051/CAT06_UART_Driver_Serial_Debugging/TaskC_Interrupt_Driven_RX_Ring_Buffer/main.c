@@ -53,6 +53,12 @@ void main(void)
                 uart_put_uint(len);
                 uart_puts(" chars: ");
                 uart_puts(line);
+                if (uart_overflows())            /* report bytes lost to a full RX buffer */
+                {
+                    uart_puts("  (bytes lost so far: ");
+                    uart_put_uint(uart_overflows());
+                    uart_puts(")");
+                }
                 uart_puts("\r\n> ");
                 len = 0;
             }
@@ -60,6 +66,10 @@ void main(void)
             {
                 line[len++] = c;
                 uart_putc(c);           /* echo */
+            }
+            else
+            {
+                uart_putc('\a');       /* line full: bell, character not stored */
             }
         }
 

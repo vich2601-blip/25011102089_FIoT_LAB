@@ -53,6 +53,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 static char    cmd_buf[CMD_MAX_LEN + 1];
 static uint8_t cmd_len = 0;
+static uint8_t cmd_too_long = 0;   /* set when more than CMD_MAX_LEN characters arrive */
 static uint8_t led_on  = 0;
 /* USER CODE END PV */
 
@@ -165,7 +166,13 @@ int main(void)
     {
       if (ch == '\r' || ch == '\n')              /* end of command */
       {
-        if (cmd_len > 0)
+        if (cmd_too_long)
+        {
+          uart_puts("\r\nERR: command too long (max 32 characters), ignored\r\n> ");
+          cmd_too_long = 0;                    /* never execute a truncated command */
+          cmd_len = 0;
+        }
+        else if (cmd_len > 0)
         {
           cmd_buf[cmd_len] = '\0';
           uart_puts("\r\n");
@@ -186,6 +193,10 @@ int main(void)
       {
         cmd_buf[cmd_len++] = (char)ch;
         uart_putc((char)ch);
+      }
+      else
+      {
+        cmd_too_long = 1;                      /* keep reading until Enter, then reject */
       }
     }
   }

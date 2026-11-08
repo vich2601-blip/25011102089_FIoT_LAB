@@ -26,7 +26,8 @@ sbit LED = P1^1;
 #define MS_PER_SECOND 1000
 
 volatile unsigned int ms_ticks   = 0;   /* only touched inside the ISR   */
-bit           second_flag = 0;  /* ISR -> main "1 s passed" event */
+volatile unsigned char second_flag = 0;   /* ISR -> main "1 s passed" event; volatile because
+                                           the ISR writes it while main() polls it */
 
 /* Timer 0 overflow interrupt, vector 1 (address 0x000B), register bank 1 */
 void timer0_isr(void) interrupt 1 using 1

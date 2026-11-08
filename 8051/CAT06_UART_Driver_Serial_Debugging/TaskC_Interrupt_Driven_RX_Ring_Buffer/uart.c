@@ -19,7 +19,7 @@ static volatile unsigned char idata rx_buf[UART_RX_BUF_SIZE];
 static volatile unsigned char rx_head = 0;
 static volatile unsigned char rx_tail = 0;
 static volatile unsigned char rx_lost = 0;
-static bit tx_busy = 0;
+static volatile unsigned char tx_busy = 0;   /* cleared by the ISR, polled by uart_putc() */
 
 void uart_isr(void) interrupt 4 using 2
 {

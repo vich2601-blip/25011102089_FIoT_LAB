@@ -13,6 +13,7 @@
 #   Ubuntu: sudo apt-get install gcc-arm-none-eabi libnewlib-arm-none-eabi sdcc
 #
 # Usage:  tools/build_all.sh [stm32|8051|all]      (default: all)
+#         UPDATE_HEX=1 tools/build_all.sh 8051   -> also refresh the committed Objects/*.hex
 # Exit status is non-zero if any project fails to build.
 # ---------------------------------------------------------------------------
 set -u
@@ -96,6 +97,7 @@ build_8051() {
       sdcc -mmcs51 --model-small --code-size 8192 -o "$name.ihx" main.rel $others 2>>build.log || exit 1
       packihx "$name.ihx" > "$name.hex" 2>/dev/null ) || ok=0
     if [ $ok = 1 ]; then
+      if [ "${UPDATE_HEX:-0}" = 1 ]; then mkdir -p "$d/Objects"; cp "$o/$name.hex" "$d/Objects/$name.hex"; fi
       local match="new"
       if [ -f "$d/Objects/$name.hex" ]; then cmp -s "$o/$name.hex" "$d/Objects/$name.hex" && match="matches committed HEX" || match="differs from committed HEX (other SDCC version?)"; fi
       printf "  OK    %-42s %s\n" "$name" "$match"; pass=$((pass + 1))
