@@ -8,6 +8,8 @@
 | Platform | Blue Pill STM32F103C8T6 (Cortex-M3, 72 MHz) + Wemos D1 mini (ESP8266 AT firmware) + USB-to-TTL |
 | Tools | STM32CubeMX + STM32CubeIDE, STM32 HAL, PuTTY |
 
+> Task numbers follow the lab sheets: the CAT 10 PDF numbers its tasks **9A, 9B, 9C**, and the CAT 10C sheet continues with **10C** (TCP server) and **10d** (HTTP response). The project folders are named CAT10A–CAT10D.
+
 ## Circuit Diagram
 
 ![Circuit diagram – CAT 10](circuit.png)
@@ -27,7 +29,7 @@ Both UARTs 115200-8-N-1. Wi-Fi credentials go in `Core/Inc/wifi_secrets.h` (git-
 
 ---
 
-## Task 10A — Establish STM32 ↔ Wemos UART Communication
+## Task 9A — Establish STM32 ↔ Wemos UART Communication (folder CAT10A)
 
 **Project folder:** [`CAT10A_STM32_Wemos_UART_Link`](CAT10A_STM32_Wemos_UART_Link/)
 
@@ -60,7 +62,7 @@ The Wemos replies OK, so the two boards communicate; a separate UART keeps debug
 
 ---
 
-## Task 10B — Explore the ESP8266 AT Command Interface
+## Task 9B — Explore the ESP8266 AT Command Interface (folder CAT10B)
 
 **Project folder:** [`CAT10B_ESP8266_AT_Command_Explorer`](CAT10B_ESP8266_AT_Command_Explorer/)
 
@@ -103,7 +105,7 @@ One request/response routine is enough to check the modem, read its firmware, se
 
 ---
 
-## Task 10C — Connect Wemos to Wi-Fi
+## Task 9C — Connect Wemos to Wi-Fi (folder CAT10C)
 
 **Project folder:** [`CAT10C_Connect_Wemos_to_WiFi`](CAT10C_Connect_Wemos_to_WiFi/)
 
@@ -134,7 +136,7 @@ The ESP8266 joined the network under STM32 control and a TCP exchange was comple
 
 ---
 
-## Task 10C/10D — HTTP Server (Static Page)
+## Task 10C / 10d — Configure ESP8266 as a TCP Server, HTTP Response (folder CAT10D)
 
 **Project folder:** [`CAT10D_HTTP_Server_Static_Page`](CAT10D_HTTP_Server_Static_Page/)
 

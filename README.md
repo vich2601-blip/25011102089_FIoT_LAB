@@ -25,10 +25,62 @@ Every experiment folder has a `README.md` with the experiment details, a **circu
 |---|---|---|---|---|
 | 8 | GPIO bring-up, debounce, short/long press | Blue Pill F103C6 | pull-ups, `HAL_GetTick()` time stamps | [CAT08](STM32/CAT08_GPIO_Button_LED/) |
 | 9 | UART echo and text commands | Blue Pill F103C6 | USART2, line parsing, CR/LF | [CAT09](STM32/CAT09_UART_Command_LED/) |
-| 10 | ESP8266 AT commands, Wi-Fi join, HTTP server | Blue Pill F103C8 + Wemos | two UARTs, AT protocol, `+IPD`, CIPSEND | [CAT10](STM32/CAT10_Wemos_WiFi_AT_Commands/) |
+| 10 | ESP8266 AT commands, Wi-Fi join (Tasks 9A–9C), HTTP server (Tasks 10C/10d) | Blue Pill F103C8 + Wemos | two UARTs, AT protocol, `+IPD`, CIPSEND | [CAT10](STM32/CAT10_Wemos_WiFi_AT_Commands/) |
 | 11 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [CAT11](STM32/CAT11_GPIO_User_Input/) |
 | 12 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [CAT12](STM32/CAT12_BME280_I2C_HTTP_NodeRED/) |
 | 13 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [CAT13](STM32/CAT13_BME280_MQTT_NodeRED/) |
+
+## Circuit diagrams
+
+Wiring for every experiment, drawn on [Wokwi](https://wokwi.com). Each CAT folder's README has the same diagram with the full write-up; `wokwi/diagram.json` reopens it on wokwi.com.
+
+### CAT 2 — LED Blink and Delay Library
+
+[![CAT 2 circuit diagram](8051/CAT02_LED_Blink_and_Delay_Library/circuit.png)](8051/CAT02_LED_Blink_and_Delay_Library/)
+
+### CAT 3 — Button LED Pattern Generator
+
+[![CAT 3 circuit diagram](8051/CAT03_Button_LED_Pattern_Generator/circuit.png)](8051/CAT03_Button_LED_Pattern_Generator/)
+
+### CAT 4 — Keypad 7Segment HMI
+
+[![CAT 4 circuit diagram](8051/CAT04_Keypad_7Segment_HMI/circuit.png)](8051/CAT04_Keypad_7Segment_HMI/)
+
+### CAT 5 — Timer Interrupts PWM Stepper
+
+[![CAT 5 circuit diagram](8051/CAT05_Timer_Interrupts_PWM_Stepper/circuit.png)](8051/CAT05_Timer_Interrupts_PWM_Stepper/)
+
+### CAT 6 — UART Driver Serial Debugging
+
+[![CAT 6 circuit diagram](8051/CAT06_UART_Driver_Serial_Debugging/circuit.png)](8051/CAT06_UART_Driver_Serial_Debugging/)
+
+### CAT 7 — LCD 16x2 Driver
+
+[![CAT 7 circuit diagram](8051/CAT07_LCD_16x2_Driver/circuit.png)](8051/CAT07_LCD_16x2_Driver/)
+
+### CAT 8 — GPIO Button LED
+
+[![CAT 8 circuit diagram](STM32/CAT08_GPIO_Button_LED/circuit.png)](STM32/CAT08_GPIO_Button_LED/)
+
+### CAT 9 — UART Command LED
+
+[![CAT 9 circuit diagram](STM32/CAT09_UART_Command_LED/circuit.png)](STM32/CAT09_UART_Command_LED/)
+
+### CAT 10 — Wemos WiFi AT Commands
+
+[![CAT 10 circuit diagram](STM32/CAT10_Wemos_WiFi_AT_Commands/circuit.png)](STM32/CAT10_Wemos_WiFi_AT_Commands/)
+
+### CAT 11 — GPIO User Input
+
+[![CAT 11 circuit diagram](STM32/CAT11_GPIO_User_Input/circuit.png)](STM32/CAT11_GPIO_User_Input/)
+
+### CAT 12 — BME280 I2C HTTP NodeRED
+
+[![CAT 12 circuit diagram](STM32/CAT12_BME280_I2C_HTTP_NodeRED/circuit.png)](STM32/CAT12_BME280_I2C_HTTP_NodeRED/)
+
+### CAT 13 — BME280 MQTT NodeRED
+
+[![CAT 13 circuit diagram](STM32/CAT13_BME280_MQTT_NodeRED/circuit.png)](STM32/CAT13_BME280_MQTT_NodeRED/)
 
 ## System architecture (final experiments)
 
