@@ -121,7 +121,24 @@ flowchart LR
 | 8051 timing | measured in the uCsim 8051 simulator at 11.0592 MHz (SDCC code) | CAT 2 blink 1.000 s, `delay_ms()` 1.000 ms, CAT 5 timer toggle 0.999 s, 100 Hz mode 100.2 Hz |
 | Node-RED flows | JSON structure and wiring validated, function code syntax-checked | valid |
 | Memory use | linker output | largest Blue Pill build 7.9 KB of 32 KB flash; largest Nucleo build 33 KB of 512 KB |
-| Behaviour on real hardware | to be recorded in each experiment's **Observation** table | pending |
+| Behaviour on the physical boards | demonstrated in the lab evaluation sessions (CAT 2 – 13) | not logged in this repository — the checks above cover build, logic and timing, not the boards; use the checklist below to reproduce the experiments |
+
+### Hardware checklist — what each experiment should show
+
+| CAT | Board | Expected result |
+|---|---|---|
+| 2 | AT89S52 | P1.0 LED blinks at ≈ 1 Hz (0.5 s on / 0.5 s off) |
+| 3 | AT89S52 | each key press steps the 4 LEDs through running → binary → alternate → flash |
+| 4 | AT89S52 | the key pressed appears on the 7-segment display and starts its LED pattern |
+| 5 | AT89S52 | LED toggles every 1 s; PWM fade; 100 Hz – 5 kHz square wave on P1.1 (DSO); stepper speed/direction from the keypad |
+| 6 | AT89S52 | PuTTY 9600-8-N-1 shows `Hello from 8051`; typed text is echoed |
+| 7 | AT89S52 | text on both LCD rows; live counter; `*` moves with keys 2/4/6/8 |
+| 8 | Blue Pill | PC13 LED follows / toggles with PA15; long press (≥ 1 s) starts blinking |
+| 9 | Blue Pill | PuTTY 115200: echo; `LED ON` / `LED OFF` / `LED TOGGLE` control PC13 |
+| 10 | Blue Pill + Wemos | `>> AT` / `<< OK`; IP and MAC printed after joining Wi-Fi; browser at `http://<IP>/` shows the STM32 page |
+| 11 | Nucleo-F401RE | LD2 blinks at 1 Hz (84 MHz clock confirmed); B1 short / long press behaviour |
+| 12 | Nucleo + BME280 + Wemos | UART shows chip ID `0x60` and T / P / H; browser and Node-RED receive the JSON |
+| 13 | Nucleo + BME280 + Wemos | debug UART shows `CONNACK accepted`; MQTT client / Node-RED receives the JSON on `vishrudh/stm32/bme280`; CAT13B LED follows `ON` / `OFF` / `TOGGLE` |
 
 ## Hardware
 
