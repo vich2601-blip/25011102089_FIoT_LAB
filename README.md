@@ -1,6 +1,6 @@
-# FIoT Lab — 8051 and STM32 Embedded / IoT Experiments
+# 25011102089_FIoT_LAB — 8051 and STM32 Embedded / IoT Experiments
 
-[![Build all projects](https://github.com/vich2601-blip/FIoT-Lab-25CS2741/actions/workflows/build.yml/badge.svg)](https://github.com/vich2601-blip/FIoT-Lab-25CS2741/actions/workflows/build.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+[![Build all projects](https://github.com/vich2601-blip/25011102089_FIoT_LAB/actions/workflows/build.yml/badge.svg)](https://github.com/vich2601-blip/25011102089_FIoT_LAB/actions/workflows/build.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 Lab work for **25CS2741 Fundamentals of Internet of Things + Lab** — B.Tech CSE (IoT), Semester 3, Shiv Nadar University Chennai.
 
