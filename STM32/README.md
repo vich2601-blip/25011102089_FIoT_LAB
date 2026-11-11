@@ -1,12 +1,12 @@
 # STM32 Experiments (CAT 8 – CAT 13)
 
-STM32CubeMX + STM32CubeIDE projects using the HAL. Import with **File → Import → Existing Projects into Workspace**.
+STM32CubeMX projects using the HAL. Each task folder has the CubeMX configuration (`*.ioc`, `.mxproject`), `Core/`, `Drivers/`, a Keil MDK project in `MDK-ARM/` and the same project for STM32CubeIDE (`.project`, `.cproject`), plus a README and a circuit diagram.
 
-| CAT | Board | Folder |
-|---|---|---|
-| 8 | Blue Pill F103C6 | [CAT08_GPIO_Button_LED](CAT08_GPIO_Button_LED/) |
-| 9 | Blue Pill F103C6 | [CAT09_UART_Command_LED](CAT09_UART_Command_LED/) |
-| 10 | Blue Pill F103C8 + Wemos | [CAT10_Wemos_WiFi_AT_Commands](CAT10_Wemos_WiFi_AT_Commands/) |
-| 11 | NUCLEO-F401RE | [CAT11_GPIO_User_Input](CAT11_GPIO_User_Input/) |
-| 12 | NUCLEO-F401RE + BME280 + Wemos | [CAT12_BME280_I2C_HTTP_NodeRED](CAT12_BME280_I2C_HTTP_NodeRED/) |
-| 13 | NUCLEO-F401RE + BME280 + Wemos | [CAT13_BME280_MQTT_NodeRED](CAT13_BME280_MQTT_NodeRED/) |
+| CAT | Tasks |
+|---|---|
+| 8 | [TASK8A](CAT8/TASK8A/), [TASK8B](CAT8/TASK8B/), [TASK8C](CAT8/TASK8C/) |
+| 9 | [TASK9A](CAT9/TASK9A/), [TASK9B](CAT9/TASK9B/) |
+| 10 | [TASK10A](CAT10/TASK10A/), [TASK10B](CAT10/TASK10B/), [TASK10C](CAT10/TASK10C/), [TASK10D](CAT10/TASK10D/) |
+| 11 | [TASK11A](CAT11/TASK11A/), [TASK11B](CAT11/TASK11B/), [TASK11C](CAT11/TASK11C/) |
+| 12 | [TASK12A](CAT12/TASK12A/), [TASK12B](CAT12/TASK12B/) |
+| 13 | [TASK13A](CAT13/TASK13A/), [TASK13B](CAT13/TASK13B/), [TASK13C](CAT13/TASK13C/) |

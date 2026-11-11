@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="190" viewBox="0 0 960 190" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect width="960" height="190" fill="#ffffff"/>
+<defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#57606a"/></marker></defs>
+<text x="480.0" y="30" font-size="17" font-weight="700" text-anchor="middle" fill="#24292f">CAT 12 — sensor to Node-RED (HTTP)</text>
+<rect x="40.0" y="70" width="136.0" height="80" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+<text x="108.0" y="105" font-size="13" font-weight="700" text-anchor="middle" fill="#0a3069">BME280</text>
+<text x="108.0" y="123" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">raw ADC + trim</text>
+<line x1="178.0" y1="110" x2="222.0" y2="110" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+<text x="200.0" y="62" font-size="10.5" text-anchor="middle" fill="#57606a">I²C</text>
+<rect x="226.0" y="70" width="136.0" height="80" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+<text x="294.0" y="105" font-size="13" font-weight="700" text-anchor="middle" fill="#0a3069">STM32 + Bosch API</text>
+<text x="294.0" y="123" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">compensated T/P/H</text>
+<line x1="364.0" y1="110" x2="408.0" y2="110" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+<text x="386.0" y="62" font-size="10.5" text-anchor="middle" fill="#57606a">JSON + UART</text>
+<rect x="412.0" y="70" width="136.0" height="80" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+<text x="480.0" y="105" font-size="13" font-weight="700" text-anchor="middle" fill="#0a3069">ESP8266</text>
+<text x="480.0" y="123" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">TCP server :80</text>
+<line x1="550.0" y1="110" x2="594.0" y2="110" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+<text x="572.0" y="62" font-size="10.5" text-anchor="middle" fill="#57606a">HTTP GET /</text>
+<rect x="598.0" y="70" width="136.0" height="80" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+<text x="666.0" y="96" font-size="13" font-weight="700" text-anchor="middle" fill="#0a3069">Node-RED</text>
+<text x="666.0" y="114" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">http request</text>
+<text x="666.0" y="132" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">every 5 s</text>
+<line x1="736.0" y1="110" x2="780.0" y2="110" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+<text x="758.0" y="62" font-size="10.5" text-anchor="middle" fill="#57606a">function node</text>
+<rect x="784.0" y="70" width="136.0" height="80" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+<text x="852.0" y="105" font-size="13" font-weight="700" text-anchor="middle" fill="#0a3069">Statistics</text>
+<text x="852.0" y="123" font-size="11" font-weight="400" text-anchor="middle" fill="#0a3069">min / max / avg</text>
+</svg>

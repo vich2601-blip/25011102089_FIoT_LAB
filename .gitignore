@@ -1,39 +1,40 @@
-# ---------- Keil µVision ----------
-**/Objects/*
-!**/Objects/*.hex
+
+# Keil generated listing files
 **/Listings/
-*.uvguix.*
-*.uvoptx
-*.uvopt
-*.lst
-*.m51
-*.obj
-*.lnp
-*.__i
-*.plg
 
-# ---------- STM32CubeIDE ----------
-Debug/
-Release/
-*.launch
-*.su
-*.cyclo
-*.list
-*.map
-*.elf
-*.o
-*.d
-.metadata/
-**/.settings/language.settings.xml
+# Keil generated object and build files
+**/Objects/*.obj
+**/Objects/*.lst
+**/Objects/*.m51
+**/Objects/*.abs
+**/Objects/*.omf
+**/Objects/*.lnp
+**/Objects/*.build_log.htm
+**/Objects/*.crf
+**/Objects/*.dep
 
-# ---------- OS / editors ----------
-.DS_Store
+# User-specific Keil settings
+**/*.uvgui
+**/*.uvgui.*
+**/*.uvguix*
+**/*.uvopt
+**/*.uvoptx
+
+# Generated intermediate build files
+**/*.axf
+**/*.o
+**/*.d
+**/*.dep
+**/*.map
+**/*.elf
+
+# Generated build directories
+**/Debug/
+**/Release/
+
+# Operating system files
 Thumbs.db
-.vscode/
+Desktop.ini
+.DS_Store
 
-# ---------- Local secrets ----------
-**/wifi_secrets.h
-tests/test_mqtt_packet
-tests/*.dSYM/
-tests/test_esplib
-tests/test_esp_at
+# Keep .hex firmware files tracked

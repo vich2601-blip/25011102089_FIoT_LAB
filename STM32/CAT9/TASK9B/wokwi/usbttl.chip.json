@@ -1,0 +1,13 @@
+{
+  "name": "USB-TTL (CP2102)",
+  "author": "FIoT Lab",
+  "pins": [
+    "GND",
+    "RXD",
+    "TXD",
+    "VCC5",
+    "CTS",
+    "DTR"
+  ],
+  "controls": []
+}

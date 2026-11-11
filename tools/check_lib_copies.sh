@@ -16,17 +16,17 @@ bad=0; checked=0
 
 # master file : project glob : sub-folder inside the project
 MAP=(
-  "Common_Libraries/ESPLib_MQTT/ESPLib.c|STM32/CAT13_*/CAT13*|Core/Src"
-  "Common_Libraries/ESPLib_MQTT/mqtt_packet.c|STM32/CAT13_*/CAT13*|Core/Src"
-  "Common_Libraries/ESPLib_MQTT/ESPLib.h|STM32/CAT13_*/CAT13*|Core/Inc"
-  "Common_Libraries/ESPLib_MQTT/mqtt_packet.h|STM32/CAT13_*/CAT13*|Core/Inc"
-  "Common_Libraries/ESP8266_AT_Driver/esp_at.c|STM32/CAT10_*/CAT10D_* STM32/CAT12_*/CAT12B_*|Core/Src"
-  "Common_Libraries/ESP8266_AT_Driver/esp_at.h|STM32/CAT10_*/CAT10D_* STM32/CAT12_*/CAT12B_*|Core/Inc"
-  "Common_Libraries/BME280_Bosch_API/bme280.c|STM32/CAT12_*/CAT12A_* STM32/CAT12_*/CAT12B_* STM32/CAT13_*/CAT13C_*|Core/Src"
-  "Common_Libraries/BME280_Bosch_API/bme280.h|STM32/CAT12_*/CAT12A_* STM32/CAT12_*/CAT12B_* STM32/CAT13_*/CAT13C_*|Core/Inc"
-  "Common_Libraries/BME280_Bosch_API/bme280_defs.h|STM32/CAT12_*/CAT12A_* STM32/CAT12_*/CAT12B_* STM32/CAT13_*/CAT13C_*|Core/Inc"
-  "Common_Libraries/Helpers/wifi_config.h|STM32/CAT10_*/CAT10C_* STM32/CAT10_*/CAT10D_* STM32/CAT12_*/CAT12B_* STM32/CAT13_*/CAT13*|Core/Inc"
-  "Common_Libraries/Helpers/fmt_fixed.h|STM32/CAT12_*/CAT12A_* STM32/CAT12_*/CAT12B_* STM32/CAT13_*/CAT13C_*|Core/Inc"
+  "Common_Libraries/ESPLib_MQTT/ESPLib.c|STM32/CAT13/TASK13*|Core/Src"
+  "Common_Libraries/ESPLib_MQTT/mqtt_packet.c|STM32/CAT13/TASK13*|Core/Src"
+  "Common_Libraries/ESPLib_MQTT/ESPLib.h|STM32/CAT13/TASK13*|Core/Inc"
+  "Common_Libraries/ESPLib_MQTT/mqtt_packet.h|STM32/CAT13/TASK13*|Core/Inc"
+  "Common_Libraries/ESP8266_AT_Driver/esp_at.c|STM32/CAT10/TASK10D STM32/CAT12/TASK12B|Core/Src"
+  "Common_Libraries/ESP8266_AT_Driver/esp_at.h|STM32/CAT10/TASK10D STM32/CAT12/TASK12B|Core/Inc"
+  "Common_Libraries/BME280_Bosch_API/bme280.c|STM32/CAT12/TASK12A STM32/CAT12/TASK12B STM32/CAT13/TASK13C|Core/Src"
+  "Common_Libraries/BME280_Bosch_API/bme280.h|STM32/CAT12/TASK12A STM32/CAT12/TASK12B STM32/CAT13/TASK13C|Core/Inc"
+  "Common_Libraries/BME280_Bosch_API/bme280_defs.h|STM32/CAT12/TASK12A STM32/CAT12/TASK12B STM32/CAT13/TASK13C|Core/Inc"
+  "Common_Libraries/Helpers/wifi_config.h|STM32/CAT10/TASK10C STM32/CAT10/TASK10D STM32/CAT12/TASK12B STM32/CAT13/TASK13*|Core/Inc"
+  "Common_Libraries/Helpers/fmt_fixed.h|STM32/CAT12/TASK12A STM32/CAT12/TASK12B STM32/CAT13/TASK13C|Core/Inc"
 )
 
 for entry in "${MAP[@]}"; do

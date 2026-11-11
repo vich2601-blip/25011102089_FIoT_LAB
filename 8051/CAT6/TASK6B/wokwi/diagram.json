@@ -1,0 +1,557 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "chip-at89s52",
+      "id": "mcu",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "attrs": {},
+      "type": "chip-usbttl",
+      "id": "ttl",
+      "top": 130,
+      "left": -270,
+      "rotate": 180
+    },
+    {
+      "attrs": {
+        "color": "red"
+      },
+      "type": "wokwi-led",
+      "id": "led",
+      "top": -60,
+      "left": -200
+    },
+    {
+      "attrs": {
+        "value": "330"
+      },
+      "type": "wokwi-resistor",
+      "id": "r",
+      "top": -80,
+      "left": -140
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -140,
+      "left": -280,
+      "attrs": {
+        "text": "CAT 6 - UART driver, 9600-8-N-1 to PuTTY"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": 330,
+      "left": -280,
+      "attrs": {
+        "text": "TX and RX crossed, common GND. Timer 1 Mode 2, TH1 = 0xFD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 350,
+      "left": -280,
+      "attrs": {
+        "text": "P1.0 LED: heartbeat in Task C"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_mcu",
+      "top": -18,
+      "left": -44.9,
+      "attrs": {
+        "text": "AT89S52 (8051, 40-pin DIP)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_ttl",
+      "top": 112,
+      "left": -275.9,
+      "attrs": {
+        "text": "USB-TTL (CP2102)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_0",
+      "top": 3.6,
+      "left": 10.8,
+      "attrs": {
+        "text": "1 P1.0"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_1",
+      "top": 13.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "2 P1.1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_2",
+      "top": 22.7,
+      "left": 10.8,
+      "attrs": {
+        "text": "3 P1.2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_3",
+      "top": 32.3,
+      "left": 10.8,
+      "attrs": {
+        "text": "4 P1.3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_4",
+      "top": 41.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "5 P1.4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_5",
+      "top": 51.4,
+      "left": 10.8,
+      "attrs": {
+        "text": "6 P1.5/MOSI"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_6",
+      "top": 61,
+      "left": 10.8,
+      "attrs": {
+        "text": "7 P1.6/MISO"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_7",
+      "top": 70.5,
+      "left": 10.8,
+      "attrs": {
+        "text": "8 P1.7/SCK"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_8",
+      "top": 80.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "9 RST"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_9",
+      "top": 89.7,
+      "left": 10.8,
+      "attrs": {
+        "text": "10 P3.0/RXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_10",
+      "top": 99.2,
+      "left": 10.8,
+      "attrs": {
+        "text": "11 P3.1/TXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_11",
+      "top": 108.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "12 P3.2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_12",
+      "top": 118.4,
+      "left": 10.8,
+      "attrs": {
+        "text": "13 P3.3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_13",
+      "top": 127.9,
+      "left": 10.8,
+      "attrs": {
+        "text": "14 P3.4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_14",
+      "top": 137.5,
+      "left": 10.8,
+      "attrs": {
+        "text": "15 P3.5"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_15",
+      "top": 147.1,
+      "left": 10.8,
+      "attrs": {
+        "text": "16 P3.6"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_16",
+      "top": 156.6,
+      "left": 10.8,
+      "attrs": {
+        "text": "17 P3.7"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_17",
+      "top": 166.2,
+      "left": 10.8,
+      "attrs": {
+        "text": "18 XTAL2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_18",
+      "top": 175.8,
+      "left": 10.8,
+      "attrs": {
+        "text": "19 XTAL1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_19",
+      "top": 185.3,
+      "left": 10.8,
+      "attrs": {
+        "text": "20 GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_20",
+      "top": 185.3,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.0 21"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_21",
+      "top": 175.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.1 22"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_22",
+      "top": 166.2,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.2 23"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_23",
+      "top": 156.6,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.3 24"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_24",
+      "top": 147.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.4 25"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_25",
+      "top": 137.5,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.5 26"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_26",
+      "top": 127.9,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.6 27"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_27",
+      "top": 118.4,
+      "left": 71.4,
+      "attrs": {
+        "text": "P2.7 28"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_28",
+      "top": 108.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "PSEN 29"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_29",
+      "top": 99.2,
+      "left": 75.8,
+      "attrs": {
+        "text": "ALE 30"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_30",
+      "top": 89.7,
+      "left": 80.2,
+      "attrs": {
+        "text": "EA 31"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_31",
+      "top": 80.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.7 32"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_32",
+      "top": 70.5,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.6 33"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_33",
+      "top": 61,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.5 34"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_34",
+      "top": 51.4,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.4 35"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_35",
+      "top": 41.8,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.3 36"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_36",
+      "top": 32.3,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.2 37"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_37",
+      "top": 22.7,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.1 38"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_38",
+      "top": 13.1,
+      "left": 71.4,
+      "attrs": {
+        "text": "P0.0 39"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_mcu_39",
+      "top": 3.6,
+      "left": 75.8,
+      "attrs": {
+        "text": "VCC 40"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_0",
+      "top": 152.7,
+      "left": -181,
+      "attrs": {
+        "text": "GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_1",
+      "top": 143.1,
+      "left": -181,
+      "attrs": {
+        "text": "RXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_2",
+      "top": 133.5,
+      "left": -181,
+      "attrs": {
+        "text": "TXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_3",
+      "top": 133.5,
+      "left": -259.2,
+      "attrs": {
+        "text": "5V"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_4",
+      "top": 143.1,
+      "left": -259.2,
+      "attrs": {
+        "text": "CTS"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_5",
+      "top": 152.7,
+      "left": -259.2,
+      "attrs": {
+        "text": "DTR"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "mcu:P3_1",
+      "ttl:RXD",
+      "#ff9800",
+      [
+        "h-74.8",
+        "v43.2"
+      ]
+    ],
+    [
+      "mcu:P3_0",
+      "ttl:TXD",
+      "#8bc34a",
+      [
+        "h-94.8",
+        "v43.2"
+      ]
+    ],
+    [
+      "ttl:GND",
+      "mcu:GND",
+      "black",
+      [
+        "h51.8",
+        "v33.6"
+      ]
+    ],
+    [
+      "mcu:P1_0",
+      "led:C",
+      "#e91e63",
+      [
+        "h-209.8",
+        "v-26.6"
+      ]
+    ],
+    [
+      "led:A",
+      "r:1",
+      "red",
+      [
+        "v-42",
+        "h35"
+      ]
+    ],
+    [
+      "r:2",
+      "mcu:VCC",
+      "red",
+      [
+        "v-20.7",
+        "h281.2",
+        "v103.6"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

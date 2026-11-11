@@ -16,6 +16,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi sdcc sdcc-libraries
 
+      - name: Check folder structure (CATn/TASKnX, required files, README sections)
+        run: tools/check_structure.sh
+
       - name: Check project library copies match Common_Libraries
         run: tools/check_lib_copies.sh
 

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "board-st-nucleo-c031c6",
+      "id": "nucleo",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -80,
+      "left": -150,
+      "attrs": {
+        "text": "CAT 11 - NUCLEO-F401RE on-board LED and button"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": -50,
+      "left": -150,
+      "attrs": {
+        "text": "USB: ST-LINK/V2-1 power, SWD, 8 MHz MCO (HSE bypass)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 40,
+      "left": 275,
+      "attrs": {
+        "text": "<- LD2 green LED = PA5 (active-HIGH)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt3",
+      "top": 110,
+      "left": 280,
+      "attrs": {
+        "text": "<- B1 blue USER button = PC13 (active-LOW)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt4",
+      "top": 340,
+      "left": 70,
+      "attrs": {
+        "text": "PLL: 8 MHz / 4 x 84 / 2 = 84 MHz"
+      }
+    }
+  ],
+  "connections": [],
+  "dependencies": {}
+}

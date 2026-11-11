@@ -12,23 +12,23 @@ Every experiment folder has a `README.md` with the experiment details, a **circu
 
 | CAT | Experiment | Concepts | Folder |
 |---|---|---|---|
-| 2 | Tool chain, bare-metal blink, delay library | `sbit` SFR access, calibrated loops, `delay_ms()` | [CAT02](8051/CAT02_LED_Blink_and_Delay_Library/) |
-| 3 | Four-state LED pattern generator | state machine, debouncing, edge detection | [CAT03](8051/CAT03_Button_LED_Pattern_Generator/) |
-| 4 | Keypad + seven-segment + LED HMI | row scanning, look-up tables, required function split | [CAT04](8051/CAT04_Keypad_7Segment_HMI/) |
-| 5 | Timer interrupts: 1 s base, PWM fade, square waves, signal patterns, stepper | Timer 0 Mode 1/2, ISR time base, software PWM | [CAT05](8051/CAT05_Timer_Interrupts_PWM_Stepper/) |
-| 6 | UART driver, echo, interrupt RX ring buffer | SCON, Timer-1 baud, TI/RI, serial ISR | [CAT06](8051/CAT06_UART_Driver_Serial_Debugging/) |
-| 7 | 16×2 LCD driver, live values, keypad-moved cursor | HD44780 4-bit init, DDRAM addressing | [CAT07](8051/CAT07_LCD_16x2_Driver/) |
+| 2 | Tool chain, bare-metal blink, delay library | `sbit` SFR access, calibrated loops, `delay_ms()` | [TASK2B](8051/CAT2/TASK2B/), [TASK2C](8051/CAT2/TASK2C/) |
+| 3 | Four-state LED pattern generator | state machine, debouncing, edge detection | [TASK3A](8051/CAT3/TASK3A/) |
+| 4 | Keypad + seven-segment + LED HMI | row scanning, look-up tables, required function split | [TASK4A](8051/CAT4/TASK4A/) |
+| 5 | Timer interrupts: 1 s base, PWM fade, square waves, signal patterns, stepper | Timer 0 Mode 1/2, ISR time base, software PWM | [TASK5A](8051/CAT5/TASK5A/), [TASK5B.1](8051/CAT5/TASK5B/TASK5B.1/), [TASK5B.2](8051/CAT5/TASK5B/TASK5B.2/), [TASK5B.3](8051/CAT5/TASK5B/TASK5B.3/), [TASK5C](8051/CAT5/TASK5C/) |
+| 6 | UART driver, echo, interrupt RX ring buffer | SCON, Timer-1 baud, TI/RI, serial ISR | [TASK6A](8051/CAT6/TASK6A/), [TASK6B](8051/CAT6/TASK6B/), [TASK6C](8051/CAT6/TASK6C/) |
+| 7 | 16×2 LCD driver, live values, keypad-moved cursor | HD44780 4-bit init, DDRAM addressing | [TASK7A](8051/CAT7/TASK7A/), [TASK7B](8051/CAT7/TASK7B/), [TASK7C](8051/CAT7/TASK7C/) |
 
 ## STM32 — STM32CubeMX + STM32CubeIDE, HAL
 
 | CAT | Experiment | Board | Concepts | Folder |
 |---|---|---|---|---|
-| 8 | GPIO bring-up, debounce, short/long press | Blue Pill F103C6 | pull-ups, `HAL_GetTick()` time stamps | [CAT08](STM32/CAT08_GPIO_Button_LED/) |
-| 9 | UART echo and text commands | Blue Pill F103C6 | USART2, line parsing, CR/LF | [CAT09](STM32/CAT09_UART_Command_LED/) |
-| 10 | ESP8266 AT commands, Wi-Fi join (Tasks 9A–9C), HTTP server (Tasks 10C/10d) | Blue Pill F103C8 + Wemos | two UARTs, AT protocol, `+IPD`, CIPSEND | [CAT10](STM32/CAT10_Wemos_WiFi_AT_Commands/) |
-| 11 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [CAT11](STM32/CAT11_GPIO_User_Input/) |
-| 12 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [CAT12](STM32/CAT12_BME280_I2C_HTTP_NodeRED/) |
-| 13 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [CAT13](STM32/CAT13_BME280_MQTT_NodeRED/) |
+| 8 | GPIO bring-up, debounce, short/long press | Blue Pill F103C6 | pull-ups, `HAL_GetTick()` time stamps | [TASK8A](STM32/CAT8/TASK8A/), [TASK8B](STM32/CAT8/TASK8B/), [TASK8C](STM32/CAT8/TASK8C/) |
+| 9 | UART echo and text commands | Blue Pill F103C6 | USART2, line parsing, CR/LF | [TASK9A](STM32/CAT9/TASK9A/), [TASK9B](STM32/CAT9/TASK9B/) |
+| 10 | ESP8266 AT commands, Wi-Fi join (Tasks 9A–9C), HTTP server (Tasks 10C/10d) | Blue Pill F103C8 + Wemos | two UARTs, AT protocol, `+IPD`, CIPSEND | [TASK10A](STM32/CAT10/TASK10A/), [TASK10B](STM32/CAT10/TASK10B/), [TASK10C](STM32/CAT10/TASK10C/), [TASK10D](STM32/CAT10/TASK10D/) |
+| 11 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [TASK11A](STM32/CAT11/TASK11A/), [TASK11B](STM32/CAT11/TASK11B/), [TASK11C](STM32/CAT11/TASK11C/) |
+| 12 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [TASK12A](STM32/CAT12/TASK12A/), [TASK12B](STM32/CAT12/TASK12B/) |
+| 13 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [TASK13A](STM32/CAT13/TASK13A/), [TASK13B](STM32/CAT13/TASK13B/), [TASK13C](STM32/CAT13/TASK13C/) |
 
 ## Circuit diagrams
 
@@ -36,51 +36,51 @@ Wiring for every experiment, drawn on [Wokwi](https://wokwi.com). Each CAT folde
 
 ### CAT 2 — LED Blink and Delay Library
 
-[![CAT 2 circuit diagram](8051/CAT02_LED_Blink_and_Delay_Library/circuit.png)](8051/CAT02_LED_Blink_and_Delay_Library/)
+[![CAT 2 circuit diagram](8051/CAT2/TASK2B/circuit.png)](8051/CAT2/)
 
 ### CAT 3 — Button LED Pattern Generator
 
-[![CAT 3 circuit diagram](8051/CAT03_Button_LED_Pattern_Generator/circuit.png)](8051/CAT03_Button_LED_Pattern_Generator/)
+[![CAT 3 circuit diagram](8051/CAT3/TASK3A/circuit.png)](8051/CAT3/)
 
 ### CAT 4 — Keypad 7Segment HMI
 
-[![CAT 4 circuit diagram](8051/CAT04_Keypad_7Segment_HMI/circuit.png)](8051/CAT04_Keypad_7Segment_HMI/)
+[![CAT 4 circuit diagram](8051/CAT4/TASK4A/circuit.png)](8051/CAT4/)
 
 ### CAT 5 — Timer Interrupts PWM Stepper
 
-[![CAT 5 circuit diagram](8051/CAT05_Timer_Interrupts_PWM_Stepper/circuit.png)](8051/CAT05_Timer_Interrupts_PWM_Stepper/)
+[![CAT 5 circuit diagram](8051/CAT5/TASK5A/circuit.png)](8051/CAT5/)
 
 ### CAT 6 — UART Driver Serial Debugging
 
-[![CAT 6 circuit diagram](8051/CAT06_UART_Driver_Serial_Debugging/circuit.png)](8051/CAT06_UART_Driver_Serial_Debugging/)
+[![CAT 6 circuit diagram](8051/CAT6/TASK6A/circuit.png)](8051/CAT6/)
 
 ### CAT 7 — LCD 16x2 Driver
 
-[![CAT 7 circuit diagram](8051/CAT07_LCD_16x2_Driver/circuit.png)](8051/CAT07_LCD_16x2_Driver/)
+[![CAT 7 circuit diagram](8051/CAT7/TASK7A/circuit.png)](8051/CAT7/)
 
 ### CAT 8 — GPIO Button LED
 
-[![CAT 8 circuit diagram](STM32/CAT08_GPIO_Button_LED/circuit.png)](STM32/CAT08_GPIO_Button_LED/)
+[![CAT 8 circuit diagram](STM32/CAT8/TASK8A/circuit.png)](STM32/CAT8/)
 
 ### CAT 9 — UART Command LED
 
-[![CAT 9 circuit diagram](STM32/CAT09_UART_Command_LED/circuit.png)](STM32/CAT09_UART_Command_LED/)
+[![CAT 9 circuit diagram](STM32/CAT9/TASK9A/circuit.png)](STM32/CAT9/)
 
 ### CAT 10 — Wemos WiFi AT Commands
 
-[![CAT 10 circuit diagram](STM32/CAT10_Wemos_WiFi_AT_Commands/circuit.png)](STM32/CAT10_Wemos_WiFi_AT_Commands/)
+[![CAT 10 circuit diagram](STM32/CAT10/TASK10A/circuit.png)](STM32/CAT10/)
 
 ### CAT 11 — GPIO User Input
 
-[![CAT 11 circuit diagram](STM32/CAT11_GPIO_User_Input/circuit.png)](STM32/CAT11_GPIO_User_Input/)
+[![CAT 11 circuit diagram](STM32/CAT11/TASK11A/circuit.png)](STM32/CAT11/)
 
 ### CAT 12 — BME280 I2C HTTP NodeRED
 
-[![CAT 12 circuit diagram](STM32/CAT12_BME280_I2C_HTTP_NodeRED/circuit.png)](STM32/CAT12_BME280_I2C_HTTP_NodeRED/)
+[![CAT 12 circuit diagram](STM32/CAT12/TASK12A/circuit.png)](STM32/CAT12/)
 
 ### CAT 13 — BME280 MQTT NodeRED
 
-[![CAT 13 circuit diagram](STM32/CAT13_BME280_MQTT_NodeRED/circuit.png)](STM32/CAT13_BME280_MQTT_NodeRED/)
+[![CAT 13 circuit diagram](STM32/CAT13/TASK13A/circuit.png)](STM32/CAT13/)
 
 ## System architecture (final experiments)
 
@@ -165,21 +165,33 @@ flowchart LR
 
 ## Repository layout
 
+Follows the course sample repository: one folder per platform, one folder per CAT, one folder per task.
+
 ```
-8051/CATxx_<name>/
-├── README.md, circuit.png, wokwi/ (diagram.json + custom chips)
-└── <Task folder>/   main.c, libraries (delay, uart, lcd), STARTUP.A51, *.uvproj
-STM32/CATxx_<name>/
-├── README.md, circuit.png, wokwi/, dataflow.svg, Node-RED flows (CAT 12, 13)
-└── <Project>/       Core/ (Src, Inc, Startup), Drivers/, *.ioc, .project, .cproject, *.ld
-Common_Libraries/    BME280 API, ESP8266 AT driver, ESPLib MQTT client (rewrite), helpers
+8051/CATn/TASKnX/            one Keil project per task
+├── README.md, circuit.png   experiment write-up + Wokwi circuit diagram (wokwi/ reopens it)
+├── *.uvproj, STARTUP.A51    Keil µVision project
+├── *.c / *.h                source
+└── Objects/*.hex            built firmware
+STM32/CATn/TASKnX/           one CubeMX project per task
+├── README.md, circuit.png
+├── *.ioc, .mxproject        STM32CubeMX configuration
+├── Core/, Drivers/          application code + HAL
+├── MDK-ARM/*.uvprojx        Keil MDK project, MDK-ARM/startup_*.s
+└── .project, .cproject      same project for STM32CubeIDE
+Common_Libraries/            master copies of the shared libraries (BME280 API, ESP8266 AT driver, ESPLib MQTT client, helpers)
+tools/, tests/, docs/        build script, library-copy check, host-side tests, build log
 ```
+
+CAT 5 Task 2 has three parts, so it is `8051/CAT5/TASK5B/TASK5B.1` … `TASK5B.3`. CAT 10 Tasks 9A–9C and 10C/10d (as numbered on the sheets) are in `TASK10A` … `TASK10D`.
 
 ## Building
 
 **8051:** flash the ready `Objects/*.hex` with progisp, or open the task's `.uvproj` in Keil µVision → **Build (F7)** to rebuild it. (Included HEX files were built with SDCC 4.6 and timing-checked in the uCsim simulator — see `8051/README.md`.)
 
-**STM32:** STM32CubeIDE → **File → Import → General → Existing Projects into Workspace** → select the project folder → **Build** → **Run → Debug As → STM32 C/C++ Application**. Wi-Fi projects (CAT 10C, 10D, 12B, 13) read the network name and password from `Core/Inc/wifi_secrets.h`, which is git-ignored so credentials are never committed. Create it next to `wifi_config.h` with `#define WIFI_SSID "..."` and `#define WIFI_PASSWORD "..."`; without it the project builds with placeholders.
+**STM32 (Keil MDK):** open `MDK-ARM/*.uvprojx` in the task folder → **Build (F7)** → **Download (F8)** through the ST-LINK.
+
+**STM32 (STM32CubeIDE):** **File → Import → General → Existing Projects into Workspace** → select the task folder → **Build** → **Run → Debug As → STM32 C/C++ Application**. Wi-Fi projects (CAT 10C, 10D, 12B, 13) read the network name and password from `Core/Inc/wifi_secrets.h`, which is git-ignored so credentials are never committed. Create it next to `wifi_config.h` with `#define WIFI_SSID "..."` and `#define WIFI_PASSWORD "..."`; without it the project builds with placeholders.
 
 **Node-RED:** Menu → Import → choose the `NodeRED_*.json` file → Deploy.
 

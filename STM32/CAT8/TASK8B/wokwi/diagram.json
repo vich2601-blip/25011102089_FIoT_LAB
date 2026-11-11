@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "board-stm32-bluepill",
+      "id": "bp",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "attrs": {
+        "color": "green"
+      },
+      "type": "wokwi-pushbutton",
+      "id": "btn",
+      "top": 75,
+      "left": -200
+    },
+    {
+      "attrs": {},
+      "type": "chip-stlink",
+      "id": "swd",
+      "top": -10,
+      "left": 230
+    },
+    {
+      "type": "wokwi-text",
+      "id": "lbl0",
+      "top": 81.4,
+      "left": -85.4,
+      "attrs": {
+        "text": "PA15 pull-up"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -80,
+      "left": -220,
+      "attrs": {
+        "text": "CAT 8 - Blue Pill GPIO, push-button, LED"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": 175,
+      "left": 95,
+      "attrs": {
+        "text": "PC13 on-board LED (active-LOW) <-"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 40,
+      "left": 160,
+      "attrs": {
+        "text": "SWDIO / SWCLK -> 4-pin SWD header on the board"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt3",
+      "top": 260,
+      "left": -70,
+      "attrs": {
+        "text": "STM32F103C6T6 Blue Pill"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt4",
+      "top": -50,
+      "left": -220,
+      "attrs": {
+        "text": "CubeMX: SYS Debug = Serial Wire (frees PA15)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_swd",
+      "top": -28,
+      "left": 247.5,
+      "attrs": {
+        "text": "ST-LINK V2"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_swd_0",
+      "top": -6.4,
+      "left": 240.8,
+      "attrs": {
+        "text": "3V3"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_swd_1",
+      "top": 3.1,
+      "left": 240.8,
+      "attrs": {
+        "text": "SWDIO"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_swd_2",
+      "top": 12.7,
+      "left": 240.8,
+      "attrs": {
+        "text": "SWCLK"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_swd_3",
+      "top": 22.3,
+      "left": 240.8,
+      "attrs": {
+        "text": "GND"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "bp:A15",
+      "btn:2.r",
+      "blue",
+      [
+        "h-63.2",
+        "v9.6"
+      ]
+    ],
+    [
+      "btn:1.l",
+      "bp:GND.1",
+      "black",
+      [
+        "v152",
+        "h170",
+        "v-56.2"
+      ]
+    ],
+    [
+      "bp:GND.2",
+      "swd:GND",
+      "black",
+      [
+        "h77.2",
+        "v16.4"
+      ]
+    ],
+    [
+      "bp:3V3.2",
+      "swd:V3V3",
+      "red",
+      [
+        "h97.2",
+        "v-31.6"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

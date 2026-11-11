@@ -75,7 +75,7 @@ build_8051() {
   if ! command -v sdcc >/dev/null 2>&1; then echo "sdcc not found - skipping 8051"; fail=$((fail + 1)); return; fi
   echo "== 8051 ($(sdcc --version | head -1 | cut -c1-60))"
   while IFS= read -r main; do
-    local d; d="$(dirname "$main")"; local name; name="$(basename "$d")"
+    local d; d="$(dirname "$main")"; local name; name="$(basename "$d")"; name="${name//./_}"
     local o="$OUT/8051/$name"; mkdir -p "$o"
     # Keil C51 -> SDCC keyword mapping on a temporary copy
     for f in "$d"/*.c "$d"/*.h; do

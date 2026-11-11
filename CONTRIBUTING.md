@@ -23,9 +23,9 @@ copy of the libraries it uses. `Common_Libraries/` holds the master copies.
 
 | Master copy | Copies to update |
 |---|---|
-| `Common_Libraries/ESPLib_MQTT/` (`ESPLib.*`, `mqtt_packet.*`) | `STM32/CAT13_*/CAT13A_*`, `CAT13B_*`, `CAT13C_*` — `Core/Src` + `Core/Inc` |
-| `Common_Libraries/ESP8266_AT_Driver/` (`esp_at.*`) | `STM32/CAT10_*/CAT10D_*`, `STM32/CAT12_*/CAT12B_*` |
-| `Common_Libraries/BME280_Bosch_API/` | `STM32/CAT12_*/CAT12A_*`, `CAT12B_*`, `STM32/CAT13_*/CAT13C_*` |
+| `Common_Libraries/ESPLib_MQTT/` (`ESPLib.*`, `mqtt_packet.*`) | `STM32/CAT13/TASK13A`, `TASK13B`, `TASK13C` — `Core/Src` + `Core/Inc` |
+| `Common_Libraries/ESP8266_AT_Driver/` (`esp_at.*`) | `STM32/CAT10/TASK10D`, `STM32/CAT12/TASK12B` |
+| `Common_Libraries/BME280_Bosch_API/` | `STM32/CAT12/TASK12A`, `TASK12B`, `STM32/CAT13/TASK13C` |
 | `Common_Libraries/Helpers/` (`wifi_config.h`, `fmt_fixed.h`) | the Wi-Fi / BME280 projects above |
 | 8051 `delay.c/.h`, `lcd.c/.h` | each 8051 task folder that uses them |
 
@@ -35,7 +35,7 @@ project copy differs from its master. Manual equivalent:
 
 ```bash
 L=Common_Libraries/ESPLib_MQTT
-for p in STM32/CAT13*/CAT13*/; do cp $L/*.c "$p/Core/Src/"; cp $L/*.h "$p/Core/Inc/"; done
+for p in STM32/CAT13/TASK13*/; do cp $L/*.c "$p/Core/Src/"; cp $L/*.h "$p/Core/Inc/"; done
 ```
 
 ## 8051 HEX files
