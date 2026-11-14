@@ -15,7 +15,7 @@ test_mqtt_packet: test_mqtt_packet.c $(LIB)/mqtt_packet.c $(LIB)/mqtt_packet.h
 test_esplib: test_esplib.c mock/stm32f4xx_hal.h $(LIB)/ESPLib.c $(LIB)/ESPLib.h $(LIB)/mqtt_packet.c
 	$(CC) $(CFLAGS) -Wno-unused-parameter -Imock -I$(LIB) test_esplib.c $(LIB)/ESPLib.c $(LIB)/mqtt_packet.c -o $@
 
-# esp_at.c (CAT 10D / 12B AT driver) against a simulated ESP8266
+# esp_at.c (CAT11/TASK11A and CAT13/TASK13B AT driver) against a simulated ESP8266
 ATLIB    = ../Common_Libraries/ESP8266_AT_Driver
 test_esp_at: test_esp_at.c mock/stm32f4xx_hal.h mock/main.h $(ATLIB)/esp_at.c $(ATLIB)/esp_at.h
 	$(CC) $(CFLAGS) -Wno-unused-parameter -Imock -I$(ATLIB) test_esp_at.c $(ATLIB)/esp_at.c -o $@

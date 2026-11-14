@@ -2,77 +2,72 @@
 
 **EXP:** CONTINUOUS ASSESSMENT 13
 
-**DATE:** 27/10/2026
+**LAB SHEET:** FPIoT Lab Evaluation CAT12 (Week 13 session)
 
-**NAME OF EXP:** BME280 Sensor Interfacing Using I²C and MQTT using Custom Built ESP8266 API
+**DATE:** 23/10/2026
 
-**HARDWARE SETUP / PLATFORM:** NUCLEO-F401RE (STM32F401RET6, Cortex-M4F, 84 MHz) + BME280 + Wemos D1 mini — STM32CubeMX + Keil MDK-ARM (STM32CubeIDE project also included), STM32 HAL, ESPLib API (reworked implementation), Node-RED, broker.emqx.io
+**NAME OF EXP:** BME280 Sensor Interfacing Using I²C and Bosch Sensor API, ESP8266 HTTP, Node Analytics
+
+**HARDWARE SETUP / PLATFORM:** NUCLEO-F401RE (STM32F401RET6, Cortex-M4F, 84 MHz) + BME280 + Wemos D1 mini + USB-to-TTL — STM32CubeMX + Keil MDK-ARM (STM32CubeIDE project also included), STM32 HAL, Bosch BME280 Sensor API v3.5.1, Node-RED
 
 ---
 
-## STEP 1–3 : Interface Wrappers (Publish Test)
+## STEP 1–3 : BME280 Interfacing with the Bosch Sensor API
 
 ### 1. Circuit Diagram
 
-Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883**.
+| Nucleo | Connected to |
+|---|---|
+| PB6 I2C1_SCL / PB7 I2C1_SDA | BME280 SCL / SDA (100 kHz) |
+| 3V3 / GND | BME280 VCC / GND, SDO → GND (address 0x76) |
+| PA9 USART1_TX / PA10 USART1_RX | Wemos RX / TX (115200, RX interrupt) |
+| PC6 USART6_TX / PC7 USART6_RX | USB-to-TTL (debug, 115200) |
 
 ![Circuit Diagram](circuit.png)
 
 *Drawn on [Wokwi](https://wokwi.com). To open and edit it: start a new project on wokwi.com, paste [`wokwi/diagram.json`](wokwi/diagram.json) into its diagram.json tab, and add the `wokwi/*.chip.json` files (if any) with **New file**. The AT89S52, USB-TTL, ULN2003, USBasp and ST-LINK boards are custom chips (pin names added as labels). The ESP-01 part stands in for the Wemos D1 mini and the BMP180 module for the BME280 (same AT firmware / same 4-pin I²C header); the Nucleo-64 graphic is labelled as the F401RE.*
 
-![Data flow](dataflow.svg)
+![Data flow](dataflow.png)
 
 ### 2. Core Logic / Pseudocode / Code Base
 
 **Working Principle:**
 
-ESPLib joins Wi-Fi, opens TCP to the broker and sends CONNECT (keep-alive 120 s, clean session), then waits for CONNACK and only continues if the broker accepted the connection; if anything fails it retries every 5 s, and it reconnects if the link drops. Then `hello #n from STM32 Nucleo` is published to `vishrudh/stm32/test` every second.
+`bme280.c` goes in `Core/Src`, `bme280.h` + `bme280_defs.h` in `Core/Inc`. The Bosch driver calls three application functions through `bme280_dev`:
+
+| API needs | Implemented as | HAL |
+|---|---|---|
+| read_register() | `user_i2c_read()` | `HAL_I2C_Mem_Read()` |
+| write_register() | `user_i2c_write()` | `HAL_I2C_Mem_Write()` |
+| delay_function() | `user_delay_us()` | `HAL_Delay()` for ≥ 1 ms, DWT cycle counter busy-wait for shorter delays |
+
+The program follows the suggested progression: chip ID → raw registers → Bosch compensation → display → compare settings (Profile A 2×/filter off vs Profile B 16×/filter 16, switched every 10 readings).
 
 **Pseudocode:**
 
-1. `mqtt_start()`: Init → wifiConnect → portConnect → connectBroker.
-2. Loop: format the message, `MQTT_publishTopic(..., QoS0)`, print, wait 1 s.
+1. Read register 0xD0 → must be 0x60, else halt with a wiring hint.
+2. `bme_setup()`: fill `bme280_dev`, `bme280_init()`, set oversampling, filter, standby, normal mode.
+3. Every 2 s: read 0xF7–0xFE and print the raw ADC values.
+4. `bme280_get_sensor_data()` → T (°C), P (Pa → hPa), H (%RH) → print.
+5. Every 10 readings switch profile.
 
 **Code Base:**
 
-- Project files: `CAT13A_MQTT_Publish_Test.ioc` (CubeMX configuration), `MDK-ARM/CAT13A_MQTT_Publish_Test.uvprojx` (Keil MDK), `.project` / `.cproject` (STM32CubeIDE); application code in `Core/Src/main.c`.
-- `mqtt_start()`, `dbg()`
+- Project files: `CAT12A_BME280_I2C_UART.ioc` (CubeMX configuration), `MDK-ARM/CAT12A_BME280_I2C_UART.uvprojx` (Keil MDK), `.project` / `.cproject` (STM32CubeIDE); application code in `Core/Src/main.c`.
+- `read_chip_id()`, `print_raw()`, `apply_profile()`, `bme_setup()`, `bme_read()`
+- `fmt_fixed.h` — floats printed with integer maths (no `-u _printf_float` needed)
 
 **Expected Output:**
 
 ```
-MQTT connected (CONNACK accepted) as stm32-vishrudh-test
-PUB vishrudh/stm32/test : hello #1 from STM32 Nucleo
+Chip ID     : 0x60 (BME280 OK)
+--- Reading 1 (profile A) ---
+Raw ADC     : T=... P=... H=...
+Temperature : 28.45 °C
+Pressure    : 1008.72 hPa
+Humidity    : 62.30 %RH
 ```
-
-**Supporting notes:**
-
-| ESPLib function | What it sends |
-|---|---|
-| `ESP8266_Init(StationMode, huart1)` | `AT`, `AT+CWMODE=1` |
-| `ESP8266_wifiConnect()` | `AT+CWQAP`, `AT+CWJAP` |
-| `ESP8266_portConnect("TCP", broker, "1883")` | `AT+CIPSTART` |
-| `MQTT_connectBroker()` | CONNECT 0x10, "MQTT", level 4, clean session, keep-alive, client ID |
-| `MQTT_publishTopic()` | PUBLISH 0x30, topic length, topic, payload |
-| `MQTT_subscribeTopic()` | SUBSCRIBE 0x82 |
-
-**Reworked library.** `ESPLib.h` keeps the course function names, so the lab-sheet code compiles unchanged, but `ESPLib.c` + `mqtt_packet.c` are a new implementation:
-
-| Problem in the original | Now |
-|---|---|
-| RX interrupt aborted during every send, so packets arriving meanwhile were lost | RX interrupt armed once and never aborted; 1 KB ring buffer |
-| Packet end guessed from 100 ms of UART silence; `colonIndex` could be used uninitialised (SUBACK / PINGRESP have no `:` structure) | `+IPD,<len>:` framing removed, then a byte-wise MQTT parser using the packet type and Remaining Length |
-| 1-byte Remaining Length only, lengths and destination sizes not checked, strings not always terminated | Remaining Length up to 4 bytes, every length validated before copying, output always NUL-terminated, oversized packets skipped |
-| CONNACK / SUBACK never checked; `do {} while` loops could hang forever | CONNECT waits for CONNACK = accepted, SUBSCRIBE for SUBACK ≠ 0x80; every wait has a timeout and returns `funcOk` / `funcErr` |
-
-Also: PINGREQ waits for PINGRESP (no answer → reconnect), topics that do not fit the buffer are dropped and counted, and the applications print the RX-overflow / dropped-packet counters when they change.
-
-The client is **QoS 0 only**: publish/subscribe calls asking for QoS 1/2 return `funcErr`, a SUBACK must grant QoS 0, and incoming QoS 1/2 messages (which would need PUBACK) are dropped and counted. UNSUBSCRIBE waits for the matching UNSUBACK.
-
-If the UART ring buffer ever overflows, the buffered bytes are discarded, the parser is reset and both the TCP link and the MQTT session are marked down, so the board does a full reconnect instead of parsing a broken stream. A malformed `+IPD` frame takes the same full-recovery path, and if HAL ever refuses to re-arm UART reception the library retries from the main loop. CONNACK is also checked for the Session Present rules, and topics with wildcards are rejected.
-
-Tested on the PC: `make -C tests` (54 parser checks + 56 ESPLib checks, including fault injection against a simulated ESP8266, including both `AT+CIPSEND` reply styles, packets split across and combined in TCP chunks, wrong ACK ids, a silent broker and an overflow in the middle of a packet).
 
 ### 3. Inference
 
-MQTT runs on top of the ESP8266 TCP link; the STM32 only has to frame the packets.
+I²C communication, chip ID, configuration, raw reads and Bosch compensation were all demonstrated, and the values change when the sensor environment changes.

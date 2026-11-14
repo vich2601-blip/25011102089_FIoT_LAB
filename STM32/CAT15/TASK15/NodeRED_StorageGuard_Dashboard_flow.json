@@ -1,0 +1,1094 @@
+[
+    {
+        "id": "sg0000000000tab1",
+        "type": "tab",
+        "label": "Smart Storage Guard",
+        "disabled": false,
+        "info": "MQTT data from the STM32 + ESP8266 (topic storage/guard/data)"
+    },
+    {
+        "id": "sg00000000broker",
+        "type": "mqtt-broker",
+        "name": "HiveMQ public",
+        "broker": "broker.hivemq.com",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "sg000000000page1",
+        "type": "ui-page",
+        "name": "Storage Guard",
+        "ui": "67d32623b3d980fd",
+        "path": "/storage",
+        "icon": "shield-check",
+        "layout": "grid",
+        "theme": "da4741d6a3fc14e9",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": 0,
+                "cols": 3
+            },
+            {
+                "name": "Tablet",
+                "px": 576,
+                "cols": 6
+            },
+            {
+                "name": "Small Desktop",
+                "px": 768,
+                "cols": 9
+            },
+            {
+                "name": "Desktop",
+                "px": 1024,
+                "cols": 12
+            }
+        ],
+        "tabs": [],
+        "order": 2,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "sg00000000group1",
+        "type": "ui-group",
+        "name": "Live Readings",
+        "page": "sg000000000page1",
+        "width": 6,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "sg00000000group2",
+        "type": "ui-group",
+        "name": "History",
+        "page": "sg000000000page1",
+        "width": 6,
+        "height": 1,
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "sg00000000mqttin",
+        "type": "mqtt in",
+        "z": "sg0000000000tab1",
+        "name": "STM32 data",
+        "topic": "storage/guard/data",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "sg00000000broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 200,
+        "wires": [
+            [
+                "sg0000000splitfn",
+                "sg000000000debug"
+            ]
+        ]
+    },
+    {
+        "id": "sg000000000debug",
+        "type": "debug",
+        "z": "sg0000000000tab1",
+        "name": "raw data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 330,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "sg0000000splitfn",
+        "type": "function",
+        "z": "sg0000000000tab1",
+        "name": "Split values",
+        "func": "// Payload from STM32: {\"temp\":27.45,\"hum\":55.2,\"press\":1008.32,\"alarm\":0}\nconst d = msg.payload;\nif (typeof d !== 'object' || d.temp === undefined) return null;\n\nconst alarm = d.alarm ? 1 : 0;\nflow.set('storage', { temp: d.temp, hum: d.hum, press: d.press });\nconst status = alarm ? \"ALARM - check storage!\" : \"Normal\";\n\nreturn [\n    { payload: d.temp,  topic: \"Temperature (C)\" },\n    { payload: d.hum,   topic: \"Humidity (%)\" },\n    { payload: d.press.toFixed(2) + \" hPa\" },\n    { payload: status },\n    { payload: alarm },\n    { payload: new Date().toLocaleTimeString() },\n    { payload: \"update\" },         // -> compare\n    { payload: d.press }           // -> BME pressure gauge\n];",
+        "outputs": 8,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 200,
+        "wires": [
+            [
+                "sg000000gaugetmp",
+                "sg0000000000chart",
+                "sg00000bmeGaugeT"
+            ],
+            [
+                "sg000000gaugehum",
+                "sg0000000000chart",
+                "sg00000bmeGaugeH"
+            ],
+            [
+                "sg0000000txtpres"
+            ],
+            [
+                "sg000000txtstatus"
+            ],
+            [
+                "sg0000000alarmfn"
+            ],
+            [
+                "sg00000000txttime"
+            ],
+            [
+                "sg00000compareFn"
+            ],
+            [
+                "sg00000bmeGaugeP"
+            ]
+        ]
+    },
+    {
+        "id": "sg000000gaugetmp",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Temperature",
+        "group": "sg00000000group1",
+        "order": 1,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Temperature",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "\u00b0C",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "35",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 60,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 620,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg000000gaugehum",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Humidity",
+        "group": "sg00000000group1",
+        "order": 2,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Humidity",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "60",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "70",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 610,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg0000000txtpres",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group1",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "name": "Pressure",
+        "label": "Pressure",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 600,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "sg000000txtstatus",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group1",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "Status",
+        "label": "Status",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 18,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 600,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "sg00000000txttime",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group1",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "name": "Last update",
+        "label": "Last update",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 610,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "sg0000000000chart",
+        "type": "ui-chart",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group2",
+        "name": "Temp & Humidity chart",
+        "label": "Temperature & Humidity",
+        "order": 1,
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "",
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "auto",
+        "xmin": "",
+        "xmax": "",
+        "yAxisLabel": "",
+        "yAxisProperty": "payload",
+        "yAxisPropertyType": "msg",
+        "ymin": "",
+        "ymax": "",
+        "bins": 10,
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": 3,
+        "showLegend": true,
+        "removeOlder": 1,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#ff7f0e",
+            "#0095ff",
+            "#2ca02c",
+            "#a347e1",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5",
+            "#1f77b4"
+        ],
+        "textColor": [
+            "#666666"
+        ],
+        "textColorDefault": true,
+        "gridColor": [
+            "#e5e5e5"
+        ],
+        "gridColorDefault": true,
+        "width": 6,
+        "height": 8,
+        "className": "",
+        "interpolation": "linear",
+        "x": 640,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg0000000alarmfn",
+        "type": "function",
+        "z": "sg0000000000tab1",
+        "name": "Alarm turned on?",
+        "func": "// Show a pop-up only when the alarm turns ON\nif (msg.payload === 1 && context.get('last') !== 1) {\n    context.set('last', 1);\n    return { payload: \"Storage alarm! Temperature or humidity is too high.\" };\n}\ncontext.set('last', msg.payload);\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 420,
+        "wires": [
+            [
+                "sg00000000notify"
+            ]
+        ]
+    },
+    {
+        "id": "sg00000000notify",
+        "type": "ui-notification",
+        "z": "sg0000000000tab1",
+        "ui": "67d32623b3d980fd",
+        "position": "top right",
+        "colorDefault": false,
+        "color": "#ea5353",
+        "displayTime": "5",
+        "showCountdown": true,
+        "outputs": 1,
+        "allowDismiss": true,
+        "dismissText": "Close",
+        "allowConfirm": false,
+        "confirmText": "Confirm",
+        "raw": false,
+        "className": "",
+        "name": "Alarm pop-up",
+        "x": 830,
+        "y": 420,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg00000000group3",
+        "type": "ui-group",
+        "name": "Chennai Outside (OpenWeather)",
+        "page": "sg000000000page1",
+        "width": 6,
+        "height": 1,
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "sg00000000group4",
+        "type": "ui-group",
+        "name": "Storage Inside (BME280)",
+        "page": "sg000000000page1",
+        "width": 6,
+        "height": 1,
+        "order": 4,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "sg00000000group5",
+        "type": "ui-group",
+        "name": "Comparison",
+        "page": "sg000000000page1",
+        "width": 12,
+        "height": 1,
+        "order": 5,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "sg00000weatherIn",
+        "type": "inject",
+        "z": "sg0000000000tab1",
+        "name": "every 10 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 520,
+        "wires": [
+            [
+                "sg00000weatherRq"
+            ]
+        ]
+    },
+    {
+        "id": "sg00000weatherRq",
+        "type": "http request",
+        "z": "sg0000000000tab1",
+        "name": "OpenWeatherMap Chennai",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/weather?q=Chennai&appid=YOUR_OPENWEATHER_API_KEY&units=metric",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 350,
+        "y": 520,
+        "wires": [
+            [
+                "sg00000weatherFn"
+            ]
+        ]
+    },
+    {
+        "id": "sg00000weatherFn",
+        "type": "function",
+        "z": "sg0000000000tab1",
+        "name": "Chennai weather",
+        "func": "// OpenWeatherMap -> Chennai outside weather\nconst w = msg.payload;\nif (!w || !w.main) { node.warn(\"Weather API error\"); return null; }\n\nflow.set('chennai', {\n    temp:  w.main.temp,\n    hum:   w.main.humidity,\n    press: w.main.pressure,\n    desc:  w.weather[0].description\n});\n\nreturn [\n    { payload: \"update\" },                                   // -> compare\n    { payload: w.main.temp,     topic: \"Chennai Temp (C)\" },  // -> chart\n    { payload: w.main.humidity, topic: \"Chennai Humidity (%)\" },\n    { payload: w.main.temp },                                 // -> Chennai gauges\n    { payload: w.main.humidity },\n    { payload: w.main.pressure },\n    { payload: w.weather[0].description }\n];",
+        "outputs": 7,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 520,
+        "wires": [
+            [
+                "sg00000compareFn"
+            ],
+            [
+                "sg0000000000chart"
+            ],
+            [
+                "sg0000000000chart"
+            ],
+            [
+                "sg00000owmGaugeT"
+            ],
+            [
+                "sg00000owmGaugeH"
+            ],
+            [
+                "sg00000owmGaugeP"
+            ],
+            [
+                "sg000000txtOutsd"
+            ]
+        ]
+    },
+    {
+        "id": "sg00000compareFn",
+        "type": "function",
+        "z": "sg0000000000tab1",
+        "name": "Compare",
+        "func": "// Compare storage (BME280) with Chennai outside weather\nconst s = flow.get('storage');\nconst c = flow.get('chennai');\nif (!c) return null;\n\nif (!s) return null;\n\nconst dT = s.temp - c.temp;\nconst dH = s.hum - c.hum;\nconst sign = v => (v >= 0 ? \"+\" : \"\") + v.toFixed(1);\n\nconst tText = sign(dT) + \" \u00b0C (\" + (dT >= 0 ? \"storage warmer\" : \"storage cooler\") + \")\";\nconst hText = sign(dH) + \" % (\" + (dH >= 0 ? \"storage more humid\" : \"storage drier\") + \")\";\n\nlet verdict = \"Storage is close to outside conditions\";\nif (dT > 3)       verdict = \"Storage is hotter than outside - improve ventilation\";\nelse if (dT < -3) verdict = \"Storage is cooler than outside - good\";\nif (dH > 10)      verdict += \" | Too humid inside - check for leaks/dampness\";\n\nreturn [\n    { payload: tText },\n    { payload: hText },\n    { payload: verdict }\n];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 600,
+        "wires": [
+            [
+                "sg000000txtDiffT"
+            ],
+            [
+                "sg000000txtDiffH"
+            ],
+            [
+                "sg000000txtVerdc"
+            ]
+        ]
+    },
+    {
+        "id": "sg00000owmGaugeT",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Chennai Temp",
+        "group": "sg00000000group3",
+        "order": 1,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Temperature",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "\u00b0C",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "35",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 60,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 980,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg00000owmGaugeH",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Chennai Humidity",
+        "group": "sg00000000group3",
+        "order": 2,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Humidity",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "60",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "70",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 990,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg00000owmGaugeP",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Chennai Pressure",
+        "group": "sg00000000group3",
+        "order": 3,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Pressure",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "hPa",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "950",
+                "color": "#0095ff",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "1000",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "1030",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 950,
+        "max": 1050,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 990,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg000000txtOutsd",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group3",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "Chennai weather",
+        "label": "Weather",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 980,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "sg00000bmeGaugeT",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Storage Temp",
+        "group": "sg00000000group4",
+        "order": 1,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Temperature",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "\u00b0C",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "35",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 60,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 880,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg00000bmeGaugeH",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Storage Humidity",
+        "group": "sg00000000group4",
+        "order": 2,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Humidity",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "60",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "70",
+                "color": "#ea5353",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 890,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg00000bmeGaugeP",
+        "type": "ui-gauge",
+        "z": "sg0000000000tab1",
+        "name": "Storage Pressure",
+        "group": "sg00000000group4",
+        "order": 3,
+        "value": "payload",
+        "valueType": "msg",
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Pressure",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "hPa",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "950",
+                "color": "#0095ff",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "1000",
+                "color": "#5cd65c",
+                "text": "",
+                "textType": "label"
+            },
+            {
+                "from": "1030",
+                "color": "#ffc800",
+                "text": "",
+                "textType": "label"
+            }
+        ],
+        "min": 950,
+        "max": 1050,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 890,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sg000000txtDiffT",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group5",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "name": "Temp difference",
+        "label": "Temperature difference",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 980,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "sg000000txtDiffH",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group5",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "Humidity difference",
+        "label": "Humidity difference",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 980,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "sg000000txtVerdc",
+        "type": "ui-text",
+        "z": "sg0000000000tab1",
+        "group": "sg00000000group5",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "name": "Verdict",
+        "label": "Verdict",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": 18,
+        "color": "#333333",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 960,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "67d32623b3d980fd",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true,
+        "allowInstall": false
+    },
+    {
+        "id": "da4741d6a3fc14e9",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#fcfcfd",
+            "primary": "#0d74ce",
+            "bgPage": "#f9f9fb",
+            "groupBg": "#ffffff",
+            "groupOutline": "#d9d9e0"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    }
+]

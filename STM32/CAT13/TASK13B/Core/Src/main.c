@@ -2,8 +2,8 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : CAT 13 - Subscribe example: control LD2 from any MQTT client / Node-RED
-  *                    Topic vishrudh/stm32/led, messages ON / OFF / TOGGLE.
+  * @brief          : CAT 12 - Raw HTTP response with BME280 data (JSON)
+  *                    STM32 builds {"status","temperature","humidity","pressure"} and serves it through the ESP8266.
   ******************************************************************************
   * @attention
   *
@@ -22,28 +22,32 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ESPLib.h"
+#include "bme280.h"
+#include "esp_at.h"
 #include "wifi_config.h"
+#include "fmt_fixed.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef struct
+{
+  uint8_t pending;
+  char    path[48];
+} http_request_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DBG_UART          (&huart6)          /* USART6 PC6/PC7 -> PuTTY 115200 */
-#define MQTT_BROKER       "broker.emqx.io"   /* public test broker            */
-#define MQTT_PORT         "1883"             /* plain (unencrypted) MQTT      */
-#define CMD_TOPIC         "vishrudh/stm32/led"
-#define RETRY_MS          5000U              /* wait before reconnecting      */
-#define CLIENT_ID         "stm32-vishrudh-sub"
-#define PING_PERIOD_MS    60000U             /* keep the connection alive */
-#define LED_PORT          GPIOA              /* LD2 on PA5, active-high   */
-#define LED_PIN           GPIO_PIN_5
+#define DBG_UART          (&huart6)   /* USART6: PC6 TX, PC7 RX -> USB-TTL -> PuTTY 115200 */
+/* BME280 on I2C1: PB6 = SCL, PB7 = SDA, VCC = 3.3 V, SDO = GND -> address 0x76 */
+
+/* ESP8266 (Wemos D1 mini, AT firmware) on USART1: PA9 TX -> Wemos RX, PA10 RX <- Wemos TX */
+#define MAX_LINKS          5U
+#define HTTP_PORT          80U
+#define SENSOR_PERIOD_MS   2000U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,9 +61,22 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-char mqttTopic[MQTT_TOPIC_MAX];    /* sizes required by MQTTDataHandler() */
-char mqttData[MQTT_MSG_MAX];
-static uint32_t last_ping = 0;
+static struct bme280_dev      bme;
+static struct bme280_settings bme_cfg;
+static struct bme280_data     bme_data;
+static uint8_t                bme_addr = BME280_I2C_ADDR_PRIM;   /* 0x76 */
+
+/* compensated results - add these to Live Expressions while debugging */
+float temperature = 0.0f;    /* deg C */
+float pressure    = 0.0f;    /* hPa   */
+float humidity    = 0.0f;    /* %RH   */
+int8_t bme_status = BME280_OK;
+static http_request_t    requests[MAX_LINKS];
+static volatile uint8_t  wifi_lost = 0;
+static uint32_t          last_read_ms = 0;
+static uint32_t          requests_served = 0;
+static uint8_t           sensor_ok = 0;
+static char              ip_addr[20] = "0.0.0.0";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,7 +86,9 @@ static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+int8_t user_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
+int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
+void   user_delay_us(uint32_t period, void *intf_ptr);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -79,83 +98,176 @@ static void dbg(const char *s)
   HAL_UART_Transmit(DBG_UART, (uint8_t *)s, (uint16_t)strlen(s), 200);
 }
 
-/* Print the library's error counters whenever they change */
-static void report_diagnostics(void)
+/* Connect the Bosch API to our I2C functions, check the chip and configure it */
+static int8_t bme_setup(uint8_t osr, uint8_t filter, uint8_t standby)
 {
-  static uint32_t last_ovf = 0, last_drop = 0;
-  uint32_t ovf = ESP8266_rxOverflows(), drop = MQTT_droppedMessages();
-  if (ovf != last_ovf || drop != last_drop)
+  int8_t r;
+
+  bme.intf_ptr = &bme_addr;
+  bme.intf     = BME280_I2C_INTF;
+  bme.read     = user_i2c_read;
+  bme.write    = user_i2c_write;
+  bme.delay_us = user_delay_us;
+
+  r = bme280_init(&bme);                 /* reads chip ID 0x60, soft reset, trim data */
+  if (r != BME280_OK)
+    return r;
+
+  r = bme280_get_sensor_settings(&bme_cfg, &bme);   /* start from the current settings */
+  if (r != BME280_OK)
+    return r;
+  bme_cfg.osr_t        = osr;            /* temperature oversampling */
+  bme_cfg.osr_p        = osr;            /* pressure oversampling    */
+  bme_cfg.osr_h        = osr;            /* humidity oversampling    */
+  bme_cfg.filter       = filter;         /* IIR filter coefficient   */
+  bme_cfg.standby_time = standby;        /* time between conversions in normal mode */
+  r = bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &bme_cfg, &bme);
+  if (r != BME280_OK)
+    return r;
+
+  return bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme);   /* continuous */
+}
+
+/* Read compensated values; returns 1 on success */
+static int bme_read(void)
+{
+  bme_status = bme280_get_sensor_data(BME280_ALL, &bme_data, &bme);
+  if (bme_status != BME280_OK)
+    return 0;
+  temperature = (float)bme_data.temperature;
+  pressure    = (float)(bme_data.pressure / 100.0);   /* Pa -> hPa */
+  humidity    = (float)bme_data.humidity;
+  return 1;
+}
+
+static void print_readings(void)
+{
+  char t[12], p[12], h[12], line[48];
+  fmt_2dp(t, sizeof(t), temperature);
+  fmt_2dp(p, sizeof(p), pressure);
+  fmt_2dp(h, sizeof(h), humidity);
+  snprintf(line, sizeof(line), "Temperature : %s \xC2\xB0" "C\r\n", t);  dbg(line);
+  snprintf(line, sizeof(line), "Pressure    : %s hPa\r\n", p);           dbg(line);
+  snprintf(line, sizeof(line), "Humidity    : %s %%RH\r\n", h);          dbg(line);
+}
+
+/* -------------------- ESP8266 glue -------------------- */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  esp_at_rx_cplt_callback(huart);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  esp_at_error_callback(huart);
+}
+
+/* "+IPD,<link>,<len>:GET /path HTTP/1.1" -> store the request for the main loop */
+static void on_esp_event(const char *line)
+{
+  if (strncmp(line, "+IPD,", 5) == 0)
   {
-    char line[80];
-    snprintf(line, sizeof(line), "[diag] UART RX overflow bytes: %lu, dropped MQTT packets: %lu\r\n",
-             (unsigned long)ovf, (unsigned long)drop);
-    dbg(line);
-    last_ovf = ovf;
-    last_drop = drop;
+    uint8_t link = (uint8_t)(line[5] - '0');
+    const char *get = strstr(line, ":GET ");
+    if (link < MAX_LINKS && get != NULL)
+    {
+      const char *src = get + 5;
+      uint8_t n = 0;
+      while (*src && *src != ' ' && n < sizeof(requests[link].path) - 1U)
+        requests[link].path[n++] = *src++;
+      if (*src && *src != ' ')
+        n = 0;                     /* path longer than the buffer: never serve a truncated URL */
+      requests[link].path[n] = '\0';
+      requests[link].pending = 1;
+    }
+  }
+  else if (strstr(line, ",CLOSED") != NULL)
+  {
+    uint8_t link = (uint8_t)(line[0] - '0');
+    if (link < MAX_LINKS)
+      requests[link].pending = 0;
+  }
+  else if (strcmp(line, "WIFI DISCONNECT") == 0)
+  {
+    wifi_lost = 1;
   }
 }
 
-/* Wi-Fi + TCP + MQTT CONNECT. Every step is checked; returns 1 only when the
- * broker has answered CONNACK "accepted". Optional broker login: define
- * MQTT_USERNAME / MQTT_PASSWORD in wifi_secrets.h. */
-static int mqtt_start(const char *client_id)
+/* -------------------- HTTP -------------------- */
+static void build_json(char *json, size_t size)
 {
-  MQTT_InitTypeDef_t cfg;
-
-  dbg("ESP8266 init (station mode)...\r\n");
-  if (ESP8266_Init(StationMode, huart1) != funcOk) { dbg("  ESP8266 not responding\r\n"); return 0; }
-  dbg("Joining " WIFI_SSID "...\r\n");
-  if (ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD) != funcOk) { dbg("  Wi-Fi join failed\r\n"); return 0; }
-  dbg("TCP connect to " MQTT_BROKER ":" MQTT_PORT "...\r\n");
-  if (ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT) != funcOk) { dbg("  TCP connect failed\r\n"); return 0; }
-
-  memset(&cfg, 0, sizeof(cfg));
-  cfg.keepAlive   = 120;                 /* seconds; PINGREQ / publishes keep it alive */
-  cfg.connectFlag = CleanSession;        /* no stored session */
-  cfg.clientID    = (char *)client_id;
-#if defined(MQTT_USERNAME) && defined(MQTT_PASSWORD)
-  cfg.username     = MQTT_USERNAME;
-  cfg.password     = MQTT_PASSWORD;
-  cfg.connectFlag |= UserNameFlag | PasswordFlag;
-#endif
-  if (MQTT_connectBroker(&cfg) != funcOk) { dbg("  broker refused / no CONNACK\r\n"); return 0; }
-  dbg("MQTT connected (CONNACK accepted) as ");
-  dbg(client_id);
-  dbg("\r\n");
-  return 1;
+  char t[12], h[12], p[12];
+  if (!sensor_ok)
+  {
+    snprintf(json, size, "{\"status\":\"error\",\"message\":\"sensor read failed\"}");
+    return;
+  }
+  fmt_2dp(t, sizeof(t), temperature);
+  fmt_2dp(h, sizeof(h), humidity);
+  fmt_2dp(p, sizeof(p), pressure);
+  snprintf(json, size,
+           "{\"status\":\"success\",\"temperature\":%s,\"humidity\":%s,\"pressure\":%s}",
+           t, h, p);
 }
 
-/* SUBSCRIBE and check the SUBACK (0x80 = refused by the broker) */
-static int subscribe_commands(void)
+static void http_reply(uint8_t link, const char *status, const char *json)
 {
-  if (MQTT_subscribeTopic(CMD_TOPIC, QoS0) != funcOk) { dbg("  SUBSCRIBE refused / no SUBACK\r\n"); return 0; }
-  dbg("Subscribed to " CMD_TOPIC " (SUBACK ok)\r\n");
-  return 1;
+  static char resp[384];
+  int content_length = (int)strlen(json);            /* from the ACTUAL JSON string */
+  int len = snprintf(resp, sizeof(resp),
+                     "HTTP/1.1 %s\r\n"
+                     "Content-Type: application/json\r\n"
+                     "Content-Length: %d\r\n"
+                     "Access-Control-Allow-Origin: *\r\n"
+                     "Connection: close\r\n"
+                     "\r\n"
+                     "%s",
+                     status, content_length, json);
+  if (len >= (int)sizeof(resp))
+    len = sizeof(resp) - 1;
+  if (!esp_at_send(link, resp, (uint16_t)len))
+    dbg("[HTTP] send failed (link closed or ESP busy)\r\n");
+  esp_at_close(link);
 }
 
-static void led_init(void)
+static void handle_request(uint8_t link, const char *path)
 {
-  GPIO_InitTypeDef g = { 0 };
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  g.Pin   = LED_PIN;
-  g.Mode  = GPIO_MODE_OUTPUT_PP;
-  g.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED_PORT, &g);
-  HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_RESET);
-}
+  if (path[0] == '\0')                           /* empty = URL was too long */
+  {
+    http_reply(link, "414 URI Too Long", "{\"status\":\"error\",\"message\":\"URI too long\"}");
+    return;
+  }
+  char json[160];
+  char msg[80];
 
-static void handle_message(const char *topic, const char *msg)
-{
-  dbg("SUB ");
-  dbg(topic);
-  dbg(" : ");
+  snprintf(msg, sizeof(msg), "[HTTP] link %u GET %s\r\n", link, path);
   dbg(msg);
-  dbg("\r\n");
 
-  /* only these exact commands are accepted; anything else is ignored */
-  if (strcmp(msg, "ON") == 0)          HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_SET);
-  else if (strcmp(msg, "OFF") == 0)    HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_RESET);
-  else if (strcmp(msg, "TOGGLE") == 0) HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
+  if (strcmp(path, "/") == 0 || strcmp(path, "/api/bme280") == 0)
+  {
+    build_json(json, sizeof(json));
+    http_reply(link, "200 OK", json);
+    requests_served++;
+  }
+  else
+  {
+    http_reply(link, "404 Not Found", "{\"status\":\"error\",\"message\":\"not found\"}");
+  }
+}
+
+static void server_start(void)
+{
+  char msg[64];
+  esp_at_get_ip(ip_addr, sizeof(ip_addr));
+  if (esp_at_start_server(HTTP_PORT) == ESP_OK)
+  {
+    snprintf(msg, sizeof(msg), "Open http://%s/ in a browser / Node-RED\r\n", ip_addr);
+    dbg(msg);
+  }
+  else
+  {
+    dbg("AT+CIPSERVER failed\r\n");
+  }
 }
 /* USER CODE END 0 */
 
@@ -192,11 +304,37 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-  led_init();
-  dbg("\r\nCAT13B - MQTT subscribe: publish ON / OFF / TOGGLE to " CMD_TOPIC "\r\n");
-  while (!(mqtt_start(CLIENT_ID) && subscribe_commands()))
-    HAL_Delay(RETRY_MS);
-  last_ping = HAL_GetTick();
+  char line[ESP_LINE_MAX];
+  
+  dbg("\r\nCAT12B - BME280 + ESP8266 HTTP JSON server\r\n");
+  
+  /* 1. Sensor */
+  bme_status = bme_setup(BME280_OVERSAMPLING_2X, BME280_FILTER_COEFF_OFF, BME280_STANDBY_TIME_62_5_MS);
+  if (bme_status != BME280_OK)
+  {
+    dbg("BME280 init failed (chip ID / wiring)\r\n");
+    Error_Handler();
+  }
+  HAL_Delay(100);
+  sensor_ok = (uint8_t)bme_read();
+  print_readings();
+  
+  /* 2. Wi-Fi + server */
+  esp_at_init(&huart1, on_esp_event);
+  if (esp_at_startup() != ESP_OK)
+  {
+    dbg("ESP8266 not responding\r\n");
+    Error_Handler();
+  }
+  dbg("Joining " WIFI_SSID " ...\r\n");
+  if (esp_at_join_ap(WIFI_SSID, WIFI_PASSWORD) != ESP_OK)
+  {
+    dbg("Wi-Fi join failed - edit Core/Inc/wifi_config.h\r\n");
+    Error_Handler();
+  }
+  dbg("Wi-Fi connected\r\n");
+  server_start();
+  last_read_ms = HAL_GetTick();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -206,23 +344,36 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    report_diagnostics();
-    if (MQTTDataHandler(mqttTopic, mqttData))        /* 1 = a complete, validated PUBLISH arrived */
-      handle_message(mqttTopic, mqttData);
+    /* ESP events (requests are collected by on_esp_event) */
+    while (esp_at_read_line(line, sizeof(line), 0) >= 0) { }
 
-    if (!MQTT_isConnected())
+    for (uint8_t link = 0; link < MAX_LINKS; link++)
     {
-      dbg("Connection lost - reconnecting\r\n");
-      while (!(mqtt_start(CLIENT_ID) && subscribe_commands()))
-        HAL_Delay(RETRY_MS);
-      last_ping = HAL_GetTick();
+      if (requests[link].pending)
+      {
+        requests[link].pending = 0;
+        handle_request(link, requests[link].path);
+      }
     }
 
-    if ((HAL_GetTick() - last_ping) >= PING_PERIOD_MS)
+    /* fresh sensor data every 2 s, without blocking the server */
+    if ((HAL_GetTick() - last_read_ms) >= SENSOR_PERIOD_MS)
     {
-      last_ping = HAL_GetTick();
-      if (MQTT_pingReq() != funcOk)
-        dbg("No PINGRESP from broker - will reconnect\r\n");
+      last_read_ms = HAL_GetTick();
+      sensor_ok = (uint8_t)bme_read();
+      dbg("\r\n");
+      print_readings();
+    }
+
+    if (wifi_lost)
+    {
+      dbg("Wi-Fi lost - waiting for the ESP8266 to reconnect...\r\n");
+      do
+      {
+        HAL_Delay(2000);
+      } while (esp_at_cmd("AT+CIPSTATUS", line, sizeof(line), 2000) != ESP_OK || strstr(line, "STATUS:5") != NULL);
+      wifi_lost = 0;
+      server_start();
     }
   }
   /* USER CODE END 3 */
@@ -396,7 +547,57 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/* ---------------------------------------------------------------------------
+ * Hardware abstraction for the Bosch BME280 Sensor API.
+ * The Bosch driver never touches the hardware itself: it calls these three
+ * functions through the bme280_dev structure.
+ * ------------------------------------------------------------------------- */
 
+/* read_register(): burst-read 'len' bytes starting at 'reg_addr' */
+int8_t user_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+  uint8_t addr7 = *(uint8_t *)intf_ptr;
+  /* HAL wants the 8-bit (shifted) address */
+  if (HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(addr7 << 1), reg_addr, I2C_MEMADD_SIZE_8BIT,
+                       reg_data, (uint16_t)len, 100) != HAL_OK)
+    return BME280_E_COMM_FAIL;
+  return BME280_OK;
+}
+
+/* write_register(): write 'len' bytes starting at 'reg_addr' */
+int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+  uint8_t addr7 = *(uint8_t *)intf_ptr;
+  if (HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(addr7 << 1), reg_addr, I2C_MEMADD_SIZE_8BIT,
+                        (uint8_t *)reg_data, (uint16_t)len, 100) != HAL_OK)
+    return BME280_E_COMM_FAIL;
+  return BME280_OK;
+}
+
+/* delay_function(): the API asks for microseconds.
+ * >= 1 ms : HAL_Delay (SysTick, waits at least the requested time)
+ *  < 1 ms : busy-wait on the Cortex-M4 DWT cycle counter. Cycles per us are
+ *           taken from SystemCoreClock (84 at the 84 MHz used here). */
+void user_delay_us(uint32_t period, void *intf_ptr)
+{
+  (void)intf_ptr;
+  if (period >= 1000U)
+  {
+    HAL_Delay((period + 999U) / 1000U);
+    return;
+  }
+  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) == 0U)        /* enable the cycle counter once */
+  {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  }
+  uint32_t start = DWT->CYCCNT;
+  uint32_t ticks = period * (SystemCoreClock / 1000000U);
+  while ((DWT->CYCCNT - start) < ticks)                  /* unsigned maths: wrap-safe */
+  {
+  }
+}
 /* USER CODE END 4 */
 
 /**

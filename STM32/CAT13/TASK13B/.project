@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>CAT13B_MQTT_Subscribe_LED_Control</name>
+	<name>CAT12B_BME280_HTTP_JSON_Server</name>
 	<comment></comment>
 	<projects>
 	</projects>

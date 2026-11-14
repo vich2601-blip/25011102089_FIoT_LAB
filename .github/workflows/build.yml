@@ -22,7 +22,7 @@ jobs:
       - name: Check project library copies match Common_Libraries
         run: tools/check_lib_copies.sh
 
-      - name: Build STM32 projects (17)
+      - name: Build STM32 projects (18)
         run: tools/build_all.sh stm32
 
       - name: Build 8051 projects (15)

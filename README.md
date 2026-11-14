@@ -25,10 +25,14 @@ Every experiment folder has a `README.md` with the experiment details, a **circu
 |---|---|---|---|---|
 | 8 | GPIO bring-up, debounce, short/long press | Blue Pill F103C6 | pull-ups, `HAL_GetTick()` time stamps | [TASK8A](STM32/CAT8/TASK8A/), [TASK8B](STM32/CAT8/TASK8B/), [TASK8C](STM32/CAT8/TASK8C/) |
 | 9 | UART echo and text commands | Blue Pill F103C6 | USART2, line parsing, CR/LF | [TASK9A](STM32/CAT9/TASK9A/), [TASK9B](STM32/CAT9/TASK9B/) |
-| 10 | ESP8266 AT commands, Wi-Fi join (Tasks 9A–9C), HTTP server (Tasks 10C/10d) | Blue Pill F103C8 + Wemos | two UARTs, AT protocol, `+IPD`, CIPSEND | [TASK10A](STM32/CAT10/TASK10A/), [TASK10B](STM32/CAT10/TASK10B/), [TASK10C](STM32/CAT10/TASK10C/), [TASK10D](STM32/CAT10/TASK10D/) |
-| 11 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [TASK11A](STM32/CAT11/TASK11A/), [TASK11B](STM32/CAT11/TASK11B/), [TASK11C](STM32/CAT11/TASK11C/) |
-| 12 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [TASK12A](STM32/CAT12/TASK12A/), [TASK12B](STM32/CAT12/TASK12B/) |
-| 13 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [TASK13A](STM32/CAT13/TASK13A/), [TASK13B](STM32/CAT13/TASK13B/), [TASK13C](STM32/CAT13/TASK13C/) |
+| 10 | ESP8266 AT commands, Wi-Fi join (sheet Tasks 9A–9C) | Blue Pill F103C8 + Wemos | two UARTs, AT protocol | [TASK10A](STM32/CAT10/TASK10A/), [TASK10B](STM32/CAT10/TASK10B/), [TASK10C](STM32/CAT10/TASK10C/) |
+| 11 | ESP8266 HTTP server (sheet CAT10c, Tasks 10C/10d) | Blue Pill F103C8 + Wemos | TCP server, `+IPD`, CIPSEND, raw HTTP | [TASK11A](STM32/CAT11/TASK11A/) |
+| 12 | Cortex-M4 GPIO, clock check, press classes | NUCLEO-F401RE | HSE bypass, PLL 84 MHz | [TASK12A](STM32/CAT12/TASK12A/), [TASK12B](STM32/CAT12/TASK12B/), [TASK12C](STM32/CAT12/TASK12C/) |
+| 13 | BME280 + HTTP JSON + Node-RED statistics | NUCLEO-F401RE | I²C, Bosch API, JSON, Content-Length | [TASK13A](STM32/CAT13/TASK13A/), [TASK13B](STM32/CAT13/TASK13B/) |
+| 14 | BME280 + MQTT + Node-RED dashboard | NUCLEO-F401RE | MQTT CONNECT/PUBLISH/SUBSCRIBE | [TASK14A](STM32/CAT14/TASK14A/), [TASK14B](STM32/CAT14/TASK14B/), [TASK14C](STM32/CAT14/TASK14C/) |
+| 15 | **Project — Smart Storage Guard:** BME280 limits → LED + buzzer alarm, MQTT → Node-RED dashboard | NUCLEO-F401RE + BME280 + ESP-01 | complete IoT flow: sensor → MCU → Wi-Fi → MQTT → dashboard | [TASK15](STM32/CAT15/TASK15/) |
+
+CAT folders follow the course week/session numbers; from week 11 the lab-sheet PDFs are numbered one lower (CAT11 = sheet CAT10c, CAT12 = sheet CAT11, CAT13 = sheet CAT12, CAT14 = sheet CAT13).
 
 ## Circuit diagrams
 
@@ -70,17 +74,25 @@ Wiring for every experiment, drawn on [Wokwi](https://wokwi.com). Each CAT folde
 
 [![CAT 10 circuit diagram](STM32/CAT10/TASK10A/circuit.png)](STM32/CAT10/)
 
-### CAT 11 — GPIO User Input
+### CAT 11 — ESP8266 HTTP Server
 
 [![CAT 11 circuit diagram](STM32/CAT11/TASK11A/circuit.png)](STM32/CAT11/)
 
-### CAT 12 — BME280 I2C HTTP NodeRED
+### CAT 12 — GPIO User Input
 
 [![CAT 12 circuit diagram](STM32/CAT12/TASK12A/circuit.png)](STM32/CAT12/)
 
-### CAT 13 — BME280 MQTT NodeRED
+### CAT 13 — BME280 I2C HTTP NodeRED
 
 [![CAT 13 circuit diagram](STM32/CAT13/TASK13A/circuit.png)](STM32/CAT13/)
+
+### CAT 14 — BME280 MQTT NodeRED
+
+[![CAT 14 circuit diagram](STM32/CAT14/TASK14A/circuit.png)](STM32/CAT14/)
+
+### CAT 15 — Project: Smart Storage Guard
+
+[![CAT 15 circuit diagram](STM32/CAT15/TASK15/circuit.png)](STM32/CAT15/)
 
 ## System architecture (final experiments)
 
@@ -89,8 +101,8 @@ flowchart LR
     BME["BME280<br/>temp / pressure / humidity"] -- "I²C 0x76<br/>PB6 / PB7" --> MCU["STM32 NUCLEO-F401RE<br/>Bosch BME280 API<br/>JSON payload"]
     MCU -- "UART1 115200<br/>AT commands" --> ESP["ESP8266<br/>Wemos D1 mini"]
     MCU -. "UART6 debug" .-> PC["PuTTY"]
-    ESP -- "Wi-Fi / TCP :80<br/>HTTP GET → JSON (CAT 12)" --> HTTP["Browser /<br/>Node-RED http request"]
-    ESP -- "Wi-Fi / TCP :1883<br/>MQTT PUBLISH (CAT 13)" --> BROKER["MQTT broker<br/>broker.emqx.io"]
+    ESP -- "Wi-Fi / TCP :80<br/>HTTP GET → JSON (CAT 13)" --> HTTP["Browser /<br/>Node-RED http request"]
+    ESP -- "Wi-Fi / TCP :1883<br/>MQTT PUBLISH (CAT 14)" --> BROKER["MQTT broker<br/>broker.emqx.io"]
     BROKER -- "mqtt in" --> NR["Node-RED<br/>gauges, chart,<br/>min / max / avg"]
     NR -- "mqtt out: ON / OFF / TOGGLE" --> BROKER
 ```
@@ -105,19 +117,19 @@ flowchart LR
 | Debouncing and non-blocking state machines | CAT 3, 8, 11 |
 | STM32CubeMX configuration, clock trees, HAL | CAT 8 – 13 |
 | UART protocols, ring buffers, interrupt-driven receive | CAT 6C, 10D, 12B |
-| I²C sensor integration with a vendor API | CAT 12, 13 |
-| ESP8266 AT command interface, TCP server, raw HTTP | CAT 10, 12 |
-| MQTT CONNECT / PUBLISH / SUBSCRIBE packets | CAT 13 |
-| Node-RED flows, dashboards and statistics | CAT 12, 13 |
+| I²C sensor integration with a vendor API | CAT 13, 14 |
+| ESP8266 AT command interface, TCP server, raw HTTP | CAT 10, 11, 13 |
+| MQTT CONNECT / PUBLISH / SUBSCRIBE packets | CAT 14, 15 |
+| Node-RED flows, dashboards and statistics | CAT 13, 14, 15 |
 | Build automation and CI | `tools/build_all.sh`, GitHub Actions |
 
 ## Verification status
 
 | What | How it was checked | Result |
 |---|---|---|
-| All 17 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors; 0 warnings with `-Wall -Wextra` in the application code (`Core/`). Vendor HAL drivers are compiled with warnings off (`-w`), as is usual for vendor code — see [`docs/build-log.txt`](docs/build-log.txt) |
+| All 18 STM32 projects | compiled and linked with `arm-none-eabi-gcc` (`tools/build_all.sh`, GitHub Actions) | 0 errors; 0 warnings with `-Wall -Wextra` in the application code (`Core/`). Vendor HAL drivers are compiled with warnings off (`-w`), as is usual for vendor code — see [`docs/build-log.txt`](docs/build-log.txt) |
 | All 15 8051 projects | compiled with SDCC from the Keil sources (keywords mapped on a temporary copy) | 0 errors; committed HEX files match the sources. SDCC is not Keil C51 — Keil output is not verified here |
-| MQTT client (CAT 13) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 54 packet checks + 56 ESPLib checks + 26 AT-driver checks against a simulated ESP8266 and broker, including fault injection (refused UART re-arm, malformed `+IPD` frames, RX overflow), plus a CI check that every project copy of a shared library matches its master: both CIPSEND reply styles, PINGRESP timeout, UNSUBACK, QoS-0-only rules, malformed and non-canonical packets, packets split across or combined in TCP chunks, wrong ACK ids, RX overflow mid-packet with clean TCP + MQTT reconnect, CONNACK Session Present rules, wildcard topics, NULL arguments, discarded over-long AT lines, link closing during CIPSEND |
+| MQTT client (CAT 14) | host-side unit tests (`make -C tests`, ASan + UBSan, run in CI) | 54 packet checks + 56 ESPLib checks + 26 AT-driver checks against a simulated ESP8266 and broker, including fault injection (refused UART re-arm, malformed `+IPD` frames, RX overflow), plus a CI check that every project copy of a shared library matches its master: both CIPSEND reply styles, PINGRESP timeout, UNSUBACK, QoS-0-only rules, malformed and non-canonical packets, packets split across or combined in TCP chunks, wrong ACK ids, RX overflow mid-packet with clean TCP + MQTT reconnect, CONNACK Session Present rules, wildcard topics, NULL arguments, discarded over-long AT lines, link closing during CIPSEND |
 | 8051 timing | measured in the uCsim 8051 simulator at 11.0592 MHz (SDCC code) | CAT 2 blink 1.000 s, `delay_ms()` 1.000 ms, CAT 5 timer toggle 0.999 s, 100 Hz mode 100.2 Hz |
 | Node-RED flows | JSON structure and wiring validated, function code syntax-checked | valid |
 | Memory use | linker output | largest Blue Pill build 7.9 KB of 32 KB flash; largest Nucleo build 33 KB of 512 KB |
@@ -135,10 +147,11 @@ flowchart LR
 | 7 | AT89S52 | text on both LCD rows; live counter; `*` moves with keys 2/4/6/8 |
 | 8 | Blue Pill | PC13 LED follows / toggles with PA15; long press (≥ 1 s) starts blinking |
 | 9 | Blue Pill | PuTTY 115200: echo; `LED ON` / `LED OFF` / `LED TOGGLE` control PC13 |
-| 10 | Blue Pill + Wemos | `>> AT` / `<< OK`; IP and MAC printed after joining Wi-Fi; browser at `http://<IP>/` shows the STM32 page |
-| 11 | Nucleo-F401RE | LD2 blinks at 1 Hz (84 MHz clock confirmed); B1 short / long press behaviour |
-| 12 | Nucleo + BME280 + Wemos | UART shows chip ID `0x60` and T / P / H; browser and Node-RED receive the JSON |
-| 13 | Nucleo + BME280 + Wemos | debug UART shows `CONNACK accepted`; MQTT client / Node-RED receives the JSON on `vishrudh/stm32/bme280`; CAT13B LED follows `ON` / `OFF` / `TOGGLE` |
+| 10 | Blue Pill + Wemos | `>> AT` / `<< OK`; IP and MAC printed after joining Wi-Fi |
+| 11 | Blue Pill + Wemos | browser at `http://<IP>/` shows the STM32 page |
+| 12 | Nucleo-F401RE | LD2 blinks at 1 Hz (84 MHz clock confirmed); B1 short / long press behaviour |
+| 13 | Nucleo + BME280 + Wemos | UART shows chip ID `0x60` and T / P / H; browser and Node-RED receive the JSON |
+| 14 | Nucleo + BME280 + Wemos | debug UART shows `CONNACK accepted`; MQTT client / Node-RED receives the JSON on `vishrudh/stm32/bme280`; Task 14B LED follows `ON` / `OFF` / `TOGGLE` |
 
 ## Hardware
 
@@ -146,9 +159,9 @@ flowchart LR
 |---|---|---|
 | AT89S52 development kit | CAT 2–7 | 11.0592 MHz, on-board LED P1.0 (active-low), keypad, 7-segment, 16×2 LCD, USBasp ISP |
 | STM32 Blue Pill (F103C6 / F103C8) | CAT 8–10 | 8 MHz crystal → 72 MHz, LED PC13 (active-low), ST-LINK V2 over SWD |
-| NUCLEO-F401RE | CAT 11–13 | 8 MHz from ST-LINK (HSE bypass) → 84 MHz, LD2 PA5, B1 PC13 |
-| Wemos D1 mini (ESP8266) | CAT 10, 12, 13 | Espressif AT firmware, 115200 baud |
-| Bosch BME280 | CAT 12, 13 | I²C address 0x76 |
+| NUCLEO-F401RE | CAT 12–15 | 8 MHz from ST-LINK (HSE bypass) → 84 MHz, LD2 PA5, B1 PC13 |
+| Wemos D1 mini (ESP8266) | CAT 10, 11, 13, 14 | Espressif AT firmware, 115200 baud |
+| Bosch BME280 | CAT 13, 14, 15 | I²C address 0x76 |
 | USB-to-TTL converter | CAT 6, 9, 10, 12, 13 | PuTTY terminal |
 | ULN2003 + 28BYJ-48 | CAT 5 (optional task) | stepper motor |
 
@@ -159,8 +172,8 @@ flowchart LR
 | Keil µVision 5 (C51) | 8051 projects (`.uvproj`) |
 | progisp + USBasp | flashing the AT89S52 |
 | STM32CubeIDE / CubeMX | STM32 projects (`.ioc`, `.project`, `.cproject`) |
-| Bosch BME280 Sensor API v3.5.1 | sensor driver (CAT 12, 13) |
-| ESPLib API (reimplemented, MIT) | ESP8266 + MQTT client (CAT 13) |
+| Bosch BME280 Sensor API v3.5.1 | sensor driver (CAT 13, 14) |
+| ESPLib API (reimplemented, MIT) | ESP8266 + MQTT client (CAT 14) |
 | PuTTY, Node-RED | terminal, dashboards / analytics |
 
 ## Repository layout
@@ -183,7 +196,7 @@ Common_Libraries/            master copies of the shared libraries (BME280 API, 
 tools/, tests/, docs/        build script, library-copy check, host-side tests, build log
 ```
 
-CAT 5 Task 2 has three parts, so it is `8051/CAT5/TASK5B/TASK5B.1` … `TASK5B.3`. CAT 10 Tasks 9A–9C and 10C/10d (as numbered on the sheets) are in `TASK10A` … `TASK10D`.
+CAT 5 Task 2 has three parts, so it is `8051/CAT5/TASK5B/TASK5B.1` … `TASK5B.3`. CAT 10 sheet Tasks 9A–9C are in `TASK10A` … `TASK10C`, and the CAT10c sheet (Tasks 10C/10d, week 11) is `STM32/CAT11/TASK11A`. From week 11 the folders follow the session numbers, so CAT12–CAT14 hold lab sheets CAT11–CAT13, and CAT15 is the project.
 
 ## Building
 
@@ -209,4 +222,4 @@ Original work: MIT — see [`LICENSE`](LICENSE). Third-party components keep the
 
 ## Third-party code
 
-STM32Cube HAL / CMSIS (STMicroelectronics), Bosch Sensortec BME280_SensorAPI (BSD-3-Clause), Keil `STARTUP.A51`. The CAT 13 MQTT client keeps the function names of the course ESPLib (by Can Güveren) but is an independent implementation — see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+STM32Cube HAL / CMSIS (STMicroelectronics), Bosch Sensortec BME280_SensorAPI (BSD-3-Clause), Keil `STARTUP.A51`. The CAT 14 MQTT client keeps the function names of the course ESPLib (by Can Güveren) but is an independent implementation — see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

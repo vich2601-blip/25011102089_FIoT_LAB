@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>CAT13A_MQTT_Publish_Test</name>
+	<name>CAT12A_BME280_I2C_UART</name>
 	<comment></comment>
 	<projects>
 	</projects>

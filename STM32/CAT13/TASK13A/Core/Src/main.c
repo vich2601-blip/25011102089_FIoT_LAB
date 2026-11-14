@@ -2,8 +2,8 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : CAT 13 - Steps 1-3 : MQTT CONNECT + PUBLISH through the ESP8266 (course ESPLib)
-  *                    Publishes "hello #n" to vishrudh/stm32/test every second.
+  * @brief          : CAT 12 - Steps 1-3 : BME280 over I2C with the Bosch Sensor API, output on UART
+  *                    Chip ID -> raw registers -> compensated T/P/H -> compare two oversampling profiles.
   ******************************************************************************
   * @attention
   *
@@ -22,8 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ESPLib.h"
-#include "wifi_config.h"
+#include "bme280.h"
+#include "fmt_fixed.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -35,12 +35,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DBG_UART          (&huart6)          /* USART6 PC6/PC7 -> PuTTY 115200 */
-#define MQTT_BROKER       "broker.emqx.io"   /* public test broker            */
-#define MQTT_PORT         "1883"             /* plain (unencrypted) MQTT      */
-#define TEST_TOPIC        "vishrudh/stm32/test"
-#define RETRY_MS          5000U              /* wait before reconnecting      */
-#define CLIENT_ID         "stm32-vishrudh-test"
+#define DBG_UART          (&huart6)   /* USART6: PC6 TX, PC7 RX -> USB-TTL -> PuTTY 115200 */
+/* BME280 on I2C1: PB6 = SCL, PB7 = SDA, VCC = 3.3 V, SDO = GND -> address 0x76 */
+
+#define READ_PERIOD_MS     2000U
+#define READINGS_PER_PROFILE 10U    /* switch oversampling/filter profile every 10 readings */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,7 +53,18 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-static uint32_t msg_no = 0;
+static struct bme280_dev      bme;
+static struct bme280_settings bme_cfg;
+static struct bme280_data     bme_data;
+static uint8_t                bme_addr = BME280_I2C_ADDR_PRIM;   /* 0x76 */
+
+/* compensated results - add these to Live Expressions while debugging */
+float temperature = 0.0f;    /* deg C */
+float pressure    = 0.0f;    /* hPa   */
+float humidity    = 0.0f;    /* %RH   */
+int8_t bme_status = BME280_OK;
+static uint32_t reading_no = 0;
+static uint8_t  profile    = 0;     /* 0 = A (2x, no filter), 1 = B (16x, filter 16) */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,7 +74,9 @@ static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+int8_t user_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
+int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
+void   user_delay_us(uint32_t period, void *intf_ptr);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -74,50 +86,97 @@ static void dbg(const char *s)
   HAL_UART_Transmit(DBG_UART, (uint8_t *)s, (uint16_t)strlen(s), 200);
 }
 
-/* Print the library's error counters whenever they change */
-static void report_diagnostics(void)
+/* Connect the Bosch API to our I2C functions, check the chip and configure it */
+static int8_t bme_setup(uint8_t osr, uint8_t filter, uint8_t standby)
 {
-  static uint32_t last_ovf = 0, last_drop = 0;
-  uint32_t ovf = ESP8266_rxOverflows(), drop = MQTT_droppedMessages();
-  if (ovf != last_ovf || drop != last_drop)
-  {
-    char line[80];
-    snprintf(line, sizeof(line), "[diag] UART RX overflow bytes: %lu, dropped MQTT packets: %lu\r\n",
-             (unsigned long)ovf, (unsigned long)drop);
-    dbg(line);
-    last_ovf = ovf;
-    last_drop = drop;
-  }
+  int8_t r;
+
+  bme.intf_ptr = &bme_addr;
+  bme.intf     = BME280_I2C_INTF;
+  bme.read     = user_i2c_read;
+  bme.write    = user_i2c_write;
+  bme.delay_us = user_delay_us;
+
+  r = bme280_init(&bme);                 /* reads chip ID 0x60, soft reset, trim data */
+  if (r != BME280_OK)
+    return r;
+
+  r = bme280_get_sensor_settings(&bme_cfg, &bme);   /* start from the current settings */
+  if (r != BME280_OK)
+    return r;
+  bme_cfg.osr_t        = osr;            /* temperature oversampling */
+  bme_cfg.osr_p        = osr;            /* pressure oversampling    */
+  bme_cfg.osr_h        = osr;            /* humidity oversampling    */
+  bme_cfg.filter       = filter;         /* IIR filter coefficient   */
+  bme_cfg.standby_time = standby;        /* time between conversions in normal mode */
+  r = bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &bme_cfg, &bme);
+  if (r != BME280_OK)
+    return r;
+
+  return bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme);   /* continuous */
 }
 
-/* Wi-Fi + TCP + MQTT CONNECT. Every step is checked; returns 1 only when the
- * broker has answered CONNACK "accepted". Optional broker login: define
- * MQTT_USERNAME / MQTT_PASSWORD in wifi_secrets.h. */
-static int mqtt_start(const char *client_id)
+/* Read compensated values; returns 1 on success */
+static int bme_read(void)
 {
-  MQTT_InitTypeDef_t cfg;
-
-  dbg("ESP8266 init (station mode)...\r\n");
-  if (ESP8266_Init(StationMode, huart1) != funcOk) { dbg("  ESP8266 not responding\r\n"); return 0; }
-  dbg("Joining " WIFI_SSID "...\r\n");
-  if (ESP8266_wifiConnect(WIFI_SSID, WIFI_PASSWORD) != funcOk) { dbg("  Wi-Fi join failed\r\n"); return 0; }
-  dbg("TCP connect to " MQTT_BROKER ":" MQTT_PORT "...\r\n");
-  if (ESP8266_portConnect("TCP", MQTT_BROKER, MQTT_PORT) != funcOk) { dbg("  TCP connect failed\r\n"); return 0; }
-
-  memset(&cfg, 0, sizeof(cfg));
-  cfg.keepAlive   = 120;                 /* seconds; PINGREQ / publishes keep it alive */
-  cfg.connectFlag = CleanSession;        /* no stored session */
-  cfg.clientID    = (char *)client_id;
-#if defined(MQTT_USERNAME) && defined(MQTT_PASSWORD)
-  cfg.username     = MQTT_USERNAME;
-  cfg.password     = MQTT_PASSWORD;
-  cfg.connectFlag |= UserNameFlag | PasswordFlag;
-#endif
-  if (MQTT_connectBroker(&cfg) != funcOk) { dbg("  broker refused / no CONNACK\r\n"); return 0; }
-  dbg("MQTT connected (CONNACK accepted) as ");
-  dbg(client_id);
-  dbg("\r\n");
+  bme_status = bme280_get_sensor_data(BME280_ALL, &bme_data, &bme);
+  if (bme_status != BME280_OK)
+    return 0;
+  temperature = (float)bme_data.temperature;
+  pressure    = (float)(bme_data.pressure / 100.0);   /* Pa -> hPa */
+  humidity    = (float)bme_data.humidity;
   return 1;
+}
+
+static void print_readings(void)
+{
+  char t[12], p[12], h[12], line[48];
+  fmt_2dp(t, sizeof(t), temperature);
+  fmt_2dp(p, sizeof(p), pressure);
+  fmt_2dp(h, sizeof(h), humidity);
+  snprintf(line, sizeof(line), "Temperature : %s \xC2\xB0" "C\r\n", t);  dbg(line);
+  snprintf(line, sizeof(line), "Pressure    : %s hPa\r\n", p);           dbg(line);
+  snprintf(line, sizeof(line), "Humidity    : %s %%RH\r\n", h);          dbg(line);
+}
+
+/* Step 1: read the chip ID register (0xD0) directly - should be 0x60 */
+static uint8_t read_chip_id(void)
+{
+  uint8_t id = 0;
+  if (user_i2c_read(BME280_REG_CHIP_ID, &id, 1, &bme_addr) != BME280_OK)
+    return 0;
+  return id;
+}
+
+/* Step 2: read the 8 raw measurement registers 0xF7..0xFE and unpack the ADC values */
+static void print_raw(void)
+{
+  uint8_t r[BME280_LEN_P_T_H_DATA];
+  char    line[64];
+  if (bme280_get_regs(BME280_REG_DATA, r, sizeof(r), &bme) != BME280_OK)
+    return;
+  uint32_t adc_p = ((uint32_t)r[0] << 12) | ((uint32_t)r[1] << 4) | (r[2] >> 4);
+  uint32_t adc_t = ((uint32_t)r[3] << 12) | ((uint32_t)r[4] << 4) | (r[5] >> 4);
+  uint32_t adc_h = ((uint32_t)r[6] << 8)  |  r[7];
+  snprintf(line, sizeof(line), "Raw ADC     : T=%lu P=%lu H=%lu\r\n",
+           (unsigned long)adc_t, (unsigned long)adc_p, (unsigned long)adc_h);
+  dbg(line);
+}
+
+/* Step 5: two settings profiles to compare the noise of the readings */
+static void apply_profile(uint8_t which)
+{
+  if (which == 0)
+  {
+    bme_setup(BME280_OVERSAMPLING_2X, BME280_FILTER_COEFF_OFF, BME280_STANDBY_TIME_62_5_MS);
+    dbg("\r\n>>> Profile A: oversampling 2x, IIR filter OFF\r\n");
+  }
+  else
+  {
+    bme_setup(BME280_OVERSAMPLING_16X, BME280_FILTER_COEFF_16, BME280_STANDBY_TIME_125_MS);
+    dbg("\r\n>>> Profile B: oversampling 16x, IIR filter 16 (smoother, slower)\r\n");
+  }
+  HAL_Delay(200);                    /* let the first conversion finish */
 }
 /* USER CODE END 0 */
 
@@ -154,8 +213,21 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-  dbg("\r\nCAT13A - MQTT publish test\r\n");
-  while (!mqtt_start(CLIENT_ID)) HAL_Delay(RETRY_MS);
+  char msg[48];
+  uint8_t id;
+  
+  dbg("\r\nCAT12A - BME280 over I2C with the Bosch Sensor API\r\n");
+  
+  id = read_chip_id();
+  snprintf(msg, sizeof(msg), "Chip ID     : 0x%02X %s\r\n", id, (id == BME280_CHIP_ID) ? "(BME280 OK)" : "(WRONG / no sensor)");
+  dbg(msg);
+  if (id != BME280_CHIP_ID)
+  {
+    dbg("Check wiring: SCL=PB6, SDA=PB7, 3.3V, GND, address 0x76\r\n");
+    Error_Handler();
+  }
+  
+  apply_profile(profile);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -165,20 +237,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    char payload[48];
-    snprintf(payload, sizeof(payload), "hello #%lu from STM32 Nucleo", (unsigned long)++msg_no);
-    report_diagnostics();
-    if (!MQTT_isConnected())
+    char hdr[48];
+
+    reading_no++;
+    snprintf(hdr, sizeof(hdr), "\r\n--- Reading %lu (profile %c) ---\r\n", (unsigned long)reading_no, profile ? 'B' : 'A');
+    dbg(hdr);
+    print_raw();
+    if (bme_read())
+      print_readings();
+    else
+      dbg("bme280_get_sensor_data() failed\r\n");
+
+    if ((reading_no % READINGS_PER_PROFILE) == 0)
     {
-      dbg("Connection lost - reconnecting\r\n");
-      while (!mqtt_start(CLIENT_ID)) HAL_Delay(RETRY_MS);
+      profile = !profile;
+      apply_profile(profile);
     }
-    if (MQTT_publishTopic(TEST_TOPIC, payload, QoS0) != funcOk)   /* PUBLISH: 0x30, length, topic, message */
-      dbg("PUB failed: ");
-    dbg("PUB " TEST_TOPIC " : ");
-    dbg(payload);
-    dbg("\r\n");
-    HAL_Delay(1000);
+    HAL_Delay(READ_PERIOD_MS);
   }
   /* USER CODE END 3 */
 }
@@ -351,7 +426,57 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/* ---------------------------------------------------------------------------
+ * Hardware abstraction for the Bosch BME280 Sensor API.
+ * The Bosch driver never touches the hardware itself: it calls these three
+ * functions through the bme280_dev structure.
+ * ------------------------------------------------------------------------- */
 
+/* read_register(): burst-read 'len' bytes starting at 'reg_addr' */
+int8_t user_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+  uint8_t addr7 = *(uint8_t *)intf_ptr;
+  /* HAL wants the 8-bit (shifted) address */
+  if (HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(addr7 << 1), reg_addr, I2C_MEMADD_SIZE_8BIT,
+                       reg_data, (uint16_t)len, 100) != HAL_OK)
+    return BME280_E_COMM_FAIL;
+  return BME280_OK;
+}
+
+/* write_register(): write 'len' bytes starting at 'reg_addr' */
+int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+  uint8_t addr7 = *(uint8_t *)intf_ptr;
+  if (HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(addr7 << 1), reg_addr, I2C_MEMADD_SIZE_8BIT,
+                        (uint8_t *)reg_data, (uint16_t)len, 100) != HAL_OK)
+    return BME280_E_COMM_FAIL;
+  return BME280_OK;
+}
+
+/* delay_function(): the API asks for microseconds.
+ * >= 1 ms : HAL_Delay (SysTick, waits at least the requested time)
+ *  < 1 ms : busy-wait on the Cortex-M4 DWT cycle counter. Cycles per us are
+ *           taken from SystemCoreClock (84 at the 84 MHz used here). */
+void user_delay_us(uint32_t period, void *intf_ptr)
+{
+  (void)intf_ptr;
+  if (period >= 1000U)
+  {
+    HAL_Delay((period + 999U) / 1000U);
+    return;
+  }
+  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) == 0U)        /* enable the cycle counter once */
+  {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  }
+  uint32_t start = DWT->CYCCNT;
+  uint32_t ticks = period * (SystemCoreClock / 1000000U);
+  while ((DWT->CYCCNT - start) < ticks)                  /* unsigned maths: wrap-safe */
+  {
+  }
+}
 /* USER CODE END 4 */
 
 /**

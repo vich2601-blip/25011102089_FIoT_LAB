@@ -3,7 +3,7 @@
 ## Build and test
 
 ```bash
-tools/build_all.sh            # all 17 STM32 + 15 8051 projects (needs arm-none-eabi-gcc and sdcc)
+tools/build_all.sh            # all 18 STM32 + 15 8051 projects (needs arm-none-eabi-gcc and sdcc)
 tools/build_all.sh stm32      # only STM32
 tools/build_all.sh 8051       # only 8051
 make -C tests                 # host-side tests (MQTT packet parser, ESPLib, ESP8266 AT driver)
@@ -23,9 +23,9 @@ copy of the libraries it uses. `Common_Libraries/` holds the master copies.
 
 | Master copy | Copies to update |
 |---|---|
-| `Common_Libraries/ESPLib_MQTT/` (`ESPLib.*`, `mqtt_packet.*`) | `STM32/CAT13/TASK13A`, `TASK13B`, `TASK13C` — `Core/Src` + `Core/Inc` |
-| `Common_Libraries/ESP8266_AT_Driver/` (`esp_at.*`) | `STM32/CAT10/TASK10D`, `STM32/CAT12/TASK12B` |
-| `Common_Libraries/BME280_Bosch_API/` | `STM32/CAT12/TASK12A`, `TASK12B`, `STM32/CAT13/TASK13C` |
+| `Common_Libraries/ESPLib_MQTT/` (`ESPLib.*`, `mqtt_packet.*`) | `STM32/CAT14/TASK14A`, `TASK14B`, `TASK14C` — `Core/Src` + `Core/Inc` |
+| `Common_Libraries/ESP8266_AT_Driver/` (`esp_at.*`) | `STM32/CAT11/TASK11A`, `STM32/CAT13/TASK13B` |
+| `Common_Libraries/BME280_Bosch_API/` | `STM32/CAT13/TASK13A`, `TASK13B`, `STM32/CAT14/TASK14C` |
 | `Common_Libraries/Helpers/` (`wifi_config.h`, `fmt_fixed.h`) | the Wi-Fi / BME280 projects above |
 | 8051 `delay.c/.h`, `lcd.c/.h` | each 8051 task folder that uses them |
 
@@ -35,7 +35,7 @@ project copy differs from its master. Manual equivalent:
 
 ```bash
 L=Common_Libraries/ESPLib_MQTT
-for p in STM32/CAT13/TASK13*/; do cp $L/*.c "$p/Core/Src/"; cp $L/*.h "$p/Core/Inc/"; done
+for p in STM32/CAT14/TASK14*/; do cp $L/*.c "$p/Core/Src/"; cp $L/*.h "$p/Core/Inc/"; done
 ```
 
 ## 8051 HEX files

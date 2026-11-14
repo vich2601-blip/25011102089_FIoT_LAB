@@ -2,74 +2,116 @@
 
 **EXP:** CONTINUOUS ASSESSMENT 13
 
-**DATE:** 27/10/2026
+**LAB SHEET:** FPIoT Lab Evaluation CAT12 (Week 13 session)
 
-**NAME OF EXP:** BME280 Sensor Interfacing Using I²C and MQTT using Custom Built ESP8266 API
+**DATE:** 23/10/2026
 
-**HARDWARE SETUP / PLATFORM:** NUCLEO-F401RE (STM32F401RET6, Cortex-M4F, 84 MHz) + BME280 + Wemos D1 mini — STM32CubeMX + Keil MDK-ARM (STM32CubeIDE project also included), STM32 HAL, ESPLib API (reworked implementation), Node-RED, broker.emqx.io
+**NAME OF EXP:** BME280 Sensor Interfacing Using I²C and Bosch Sensor API, ESP8266 HTTP, Node Analytics
+
+**HARDWARE SETUP / PLATFORM:** NUCLEO-F401RE (STM32F401RET6, Cortex-M4F, 84 MHz) + BME280 + Wemos D1 mini + USB-to-TTL — STM32CubeMX + Keil MDK-ARM (STM32CubeIDE project also included), STM32 HAL, Bosch BME280 Sensor API v3.5.1, Node-RED
 
 ---
 
-## SUBSCRIBE EXAMPLE : LED Control
+## Raw HTTP Response with BME280 Data
 
 ### 1. Circuit Diagram
 
-Same wiring as CAT 12; CAT13B also uses LD2 (PA5). Broker **broker.emqx.io:1883**.
+| Nucleo | Connected to |
+|---|---|
+| PB6 I2C1_SCL / PB7 I2C1_SDA | BME280 SCL / SDA (100 kHz) |
+| 3V3 / GND | BME280 VCC / GND, SDO → GND (address 0x76) |
+| PA9 USART1_TX / PA10 USART1_RX | Wemos RX / TX (115200, RX interrupt) |
+| PC6 USART6_TX / PC7 USART6_RX | USB-to-TTL (debug, 115200) |
 
 ![Circuit Diagram](circuit.png)
 
 *Drawn on [Wokwi](https://wokwi.com). To open and edit it: start a new project on wokwi.com, paste [`wokwi/diagram.json`](wokwi/diagram.json) into its diagram.json tab, and add the `wokwi/*.chip.json` files (if any) with **New file**. The AT89S52, USB-TTL, ULN2003, USBasp and ST-LINK boards are custom chips (pin names added as labels). The ESP-01 part stands in for the Wemos D1 mini and the BMP180 module for the BME280 (same AT firmware / same 4-pin I²C header); the Nucleo-64 graphic is labelled as the F401RE.*
 
-![Data flow](dataflow.svg)
+![Data flow](dataflow.png)
 
 ### 2. Core Logic / Pseudocode / Code Base
 
 **Working Principle:**
 
-After CONNACK the board subscribes to `vishrudh/stm32/led` and checks the SUBACK. `MQTTDataHandler()` returns 1 when a complete, validated PUBLISH has arrived. Only the exact commands `ON` / `OFF` / `TOGGLE` act on LD2; anything else is ignored. PINGREQ every 60 s keeps the session alive; if the broker does not answer, the board reconnects and resubscribes. `MQTTTimer()` is still called from `SysTick_Handler` (the lab-sheet hook) but is no longer needed.
+The ESP8266 joins Wi-Fi and runs a TCP server on port 80 (shared `esp_at` driver). `GET /` returns JSON built from the latest compensated readings; the Content-Length is `strlen(json)`:
 
-> **Security note:** broker.emqx.io is a public test broker — anyone who knows the topic can publish to it. For anything beyond a lab demo, use a private broker with a login: define `MQTT_USERNAME` / `MQTT_PASSWORD` in `wifi_secrets.h` and the client sends them in CONNECT.
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: <calculated>
+Access-Control-Allow-Origin: *
+Connection: close
+
+{"status":"success","temperature":28.45,"humidity":62.30,"pressure":1008.72}
+```
+Sensor reads happen every 2 s from time stamps rather than a delay. Sending a response is still a blocking AT+CIPSEND exchange (bounded by timeouts, a few tens of ms), so requests are served one after another.
 
 **Pseudocode:**
 
-1. LD2 init, `mqtt_start()`, `MQTT_subscribeTopic()`, `HAL_UART_Receive_IT()`.
-2. Loop: `MQTTDataHandler()`; on a message print it and act on it.
-3. Every 60 s `MQTT_pingReq()`.
+1. Initialise the BME280.
+2. Start the ESP8266, join Wi-Fi, start the server, print the URL.
+3. Loop: handle URCs; answer each pending request (JSON or 404).
+4. Every 2 s refresh the readings and print them.
+5. Recover from `WIFI DISCONNECT`.
 
 **Code Base:**
 
-- Project files: `CAT13B_MQTT_Subscribe_LED_Control.ioc` (CubeMX configuration), `MDK-ARM/CAT13B_MQTT_Subscribe_LED_Control.uvprojx` (Keil MDK), `.project` / `.cproject` (STM32CubeIDE); application code in `Core/Src/main.c`.
-- `subscribe_commands()` — SUBSCRIBE + SUBACK check; reconnect + resubscribe in the main loop
-- `handle_message()`
+- Project files: `CAT12B_BME280_HTTP_JSON_Server.ioc` (CubeMX configuration), `MDK-ARM/CAT12B_BME280_HTTP_JSON_Server.uvprojx` (Keil MDK), `.project` / `.cproject` (STM32CubeIDE); application code in `Core/Src/main.c`.
+- `build_json()`, `http_reply()`, `handle_request()`, `server_start()`
 
-**Supporting notes:**
+**Expected Output:**
 
-| ESPLib function | What it sends |
-|---|---|
-| `ESP8266_Init(StationMode, huart1)` | `AT`, `AT+CWMODE=1` |
-| `ESP8266_wifiConnect()` | `AT+CWQAP`, `AT+CWJAP` |
-| `ESP8266_portConnect("TCP", broker, "1883")` | `AT+CIPSTART` |
-| `MQTT_connectBroker()` | CONNECT 0x10, "MQTT", level 4, clean session, keep-alive, client ID |
-| `MQTT_publishTopic()` | PUBLISH 0x30, topic length, topic, payload |
-| `MQTT_subscribeTopic()` | SUBSCRIBE 0x82 |
-
-**Reworked library.** `ESPLib.h` keeps the course function names, so the lab-sheet code compiles unchanged, but `ESPLib.c` + `mqtt_packet.c` are a new implementation:
-
-| Problem in the original | Now |
-|---|---|
-| RX interrupt aborted during every send, so packets arriving meanwhile were lost | RX interrupt armed once and never aborted; 1 KB ring buffer |
-| Packet end guessed from 100 ms of UART silence; `colonIndex` could be used uninitialised (SUBACK / PINGRESP have no `:` structure) | `+IPD,<len>:` framing removed, then a byte-wise MQTT parser using the packet type and Remaining Length |
-| 1-byte Remaining Length only, lengths and destination sizes not checked, strings not always terminated | Remaining Length up to 4 bytes, every length validated before copying, output always NUL-terminated, oversized packets skipped |
-| CONNACK / SUBACK never checked; `do {} while` loops could hang forever | CONNECT waits for CONNACK = accepted, SUBSCRIBE for SUBACK ≠ 0x80; every wait has a timeout and returns `funcOk` / `funcErr` |
-
-Also: PINGREQ waits for PINGRESP (no answer → reconnect), topics that do not fit the buffer are dropped and counted, and the applications print the RX-overflow / dropped-packet counters when they change.
-
-The client is **QoS 0 only**: publish/subscribe calls asking for QoS 1/2 return `funcErr`, a SUBACK must grant QoS 0, and incoming QoS 1/2 messages (which would need PUBACK) are dropped and counted. UNSUBSCRIBE waits for the matching UNSUBACK.
-
-If the UART ring buffer ever overflows, the buffered bytes are discarded, the parser is reset and both the TCP link and the MQTT session are marked down, so the board does a full reconnect instead of parsing a broken stream. A malformed `+IPD` frame takes the same full-recovery path, and if HAL ever refuses to re-arm UART reception the library retries from the main loop. CONNACK is also checked for the Session Present rules, and topics with wildcards are rejected.
-
-Tested on the PC: `make -C tests` (54 parser checks + 56 ESPLib checks, including fault injection against a simulated ESP8266, including both `AT+CIPSEND` reply styles, packets split across and combined in TCP chunks, wrong ACK ids, a silent broker and an overflow in the middle of a packet).
+```
+{"status":"success","temperature":28.45,"humidity":62.30,"pressure":1008.72}
+```
 
 ### 3. Inference
 
-The same library supports the reverse direction, so Node-RED or any client can control the board.
+The STM32 constructs a correct raw HTTP response with a JSON body and a calculated Content-Length.
+
+---
+
+## NEXT STEP : Node-RED Statistics
+
+### 1. Circuit Diagram
+
+| Nucleo | Connected to |
+|---|---|
+| PB6 I2C1_SCL / PB7 I2C1_SDA | BME280 SCL / SDA (100 kHz) |
+| 3V3 / GND | BME280 VCC / GND, SDO → GND (address 0x76) |
+| PA9 USART1_TX / PA10 USART1_RX | Wemos RX / TX (115200, RX interrupt) |
+| PC6 USART6_TX / PC7 USART6_RX | USB-to-TTL (debug, 115200) |
+
+![Circuit Diagram](circuit.png)
+
+*Drawn on [Wokwi](https://wokwi.com). To open and edit it: start a new project on wokwi.com, paste [`wokwi/diagram.json`](wokwi/diagram.json) into its diagram.json tab, and add the `wokwi/*.chip.json` files (if any) with **New file**. The AT89S52, USB-TTL, ULN2003, USBasp and ST-LINK boards are custom chips (pin names added as labels). The ESP-01 part stands in for the Wemos D1 mini and the BMP180 module for the BME280 (same AT firmware / same 4-pin I²C header); the Nucleo-64 graphic is labelled as the F401RE.*
+
+![Data flow](dataflow.png)
+
+### 2. Core Logic / Pseudocode / Code Base
+
+**Working Principle:**
+
+`NodeRED_CAT12_HTTP_Statistics_flow.json`: inject (5 s) → http request (GET STM32 /, parsed JSON) → function (running min / max / sum / count in context) → debug as a table. A reset inject clears the statistics.
+
+**Pseudocode:**
+
+1. Import the flow, set the STM32 IP in the http request node, Deploy.
+2. Let it collect readings, read the table in the Debug sidebar.
+
+**Code Base:**
+
+- `NodeRED_CAT12_HTTP_Statistics_flow.json`
+
+**Expected Output:**
+
+```
+Parameter            Minimum  Maximum  Average
+Temperature (°C)       27.91    29.02    28.46
+Humidity (%RH)          59.8     64.2    62.15
+Pressure (hPa)       1007.84  1009.31  1008.56
+```
+
+### 3. Inference
+
+Node-RED turns the raw JSON stream into summary statistics without changing the firmware.

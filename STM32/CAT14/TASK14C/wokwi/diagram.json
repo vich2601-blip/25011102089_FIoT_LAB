@@ -1,0 +1,260 @@
+{
+  "version": 1,
+  "author": "FIoT Lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "attrs": {},
+      "type": "board-st-nucleo-c031c6",
+      "id": "nucleo",
+      "top": 0,
+      "left": 0
+    },
+    {
+      "attrs": {},
+      "type": "board-esp-01",
+      "id": "esp",
+      "top": 40,
+      "left": 460
+    },
+    {
+      "attrs": {},
+      "type": "chip-usbttl",
+      "id": "ttl",
+      "top": 230,
+      "left": 470
+    },
+    {
+      "attrs": {},
+      "type": "board-bmp180",
+      "id": "bme",
+      "top": 175,
+      "left": -260
+    },
+    {
+      "attrs": {},
+      "type": "wokwi-junction",
+      "id": "jPB7",
+      "top": 220,
+      "left": 11
+    },
+    {
+      "attrs": {},
+      "type": "wokwi-junction",
+      "id": "jPC6",
+      "top": 134,
+      "left": 253
+    },
+    {
+      "type": "wokwi-text",
+      "id": "ttl0",
+      "top": -70,
+      "left": -260,
+      "attrs": {
+        "text": "CAT 13 - BME280 (I2C) + ESP8266 MQTT"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt1",
+      "top": 325,
+      "left": 85,
+      "attrs": {
+        "text": "NUCLEO-F401RE"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt2",
+      "top": 10,
+      "left": 420,
+      "attrs": {
+        "text": "ESP8266 (Wemos D1 mini, AT firmware)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt3",
+      "top": 150,
+      "left": -275,
+      "attrs": {
+        "text": "BME280 (I2C 0x76)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt4",
+      "top": 385,
+      "left": -270,
+      "attrs": {
+        "text": "PA9 TX1 (D8) -> ESP RX\nPA10 RX1 (D2) <- ESP TX\nPC6 TX6 -> USB-TTL RX\nPC7 RX6 (D9) <- USB-TTL TX\nPB6 SCL (D10), PB7 SDA (CN7-21)\n3V3 -> BME280 VCC, all GND common"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt5",
+      "top": -40,
+      "left": 150,
+      "attrs": {
+        "text": "LD2 = PA5 (CAT13B MQTT-controlled LED)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtchip_ttl",
+      "top": 212,
+      "left": 464.1,
+      "attrs": {
+        "text": "USB-TTL (CP2102)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_0",
+      "top": 233.5,
+      "left": 480.8,
+      "attrs": {
+        "text": "GND"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_1",
+      "top": 243.1,
+      "left": 480.8,
+      "attrs": {
+        "text": "RXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_2",
+      "top": 252.7,
+      "left": 480.8,
+      "attrs": {
+        "text": "TXD"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_3",
+      "top": 252.7,
+      "left": 563.4,
+      "attrs": {
+        "text": "5V"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_4",
+      "top": 243.1,
+      "left": 559,
+      "attrs": {
+        "text": "CTS"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "pin_ttl_5",
+      "top": 233.5,
+      "left": 559,
+      "attrs": {
+        "text": "DTR"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "nucleo:D8",
+      "esp:RX",
+      "orange",
+      [
+        "h180.9",
+        "v-127.5"
+      ]
+    ],
+    [
+      "nucleo:D2",
+      "esp:TX",
+      "green",
+      [
+        "h160.9",
+        "v-222.9"
+      ]
+    ],
+    [
+      "nucleo:GND.8",
+      "esp:GND",
+      "black",
+      [
+        "h181.4",
+        "v-107.7"
+      ]
+    ],
+    [
+      "jPC6:J",
+      "ttl:RXD",
+      "#00bcd4",
+      [
+        "h62.2",
+        "v109.4"
+      ]
+    ],
+    [
+      "nucleo:D9",
+      "ttl:TXD",
+      "#ffd54f",
+      [
+        "h115.9",
+        "v57"
+      ]
+    ],
+    [
+      "nucleo:GND.7",
+      "ttl:GND",
+      "black",
+      [
+        "h46.8",
+        "v28.2"
+      ]
+    ],
+    [
+      "jPB7:J",
+      "bme:SDA",
+      "blue",
+      [
+        "h-135.8",
+        "v-17"
+      ]
+    ],
+    [
+      "nucleo:D10",
+      "bme:SCL",
+      "purple",
+      [
+        "v168.8",
+        "h-364.1",
+        "v-161.8"
+      ]
+    ],
+    [
+      "nucleo:3V3.1",
+      "bme:VCC",
+      "red",
+      [
+        "h-100.2",
+        "v-12"
+      ]
+    ],
+    [
+      "nucleo:GND.2",
+      "bme:GND",
+      "black",
+      [
+        "h-80.2",
+        "v35.8"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

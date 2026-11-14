@@ -2,9 +2,9 @@
 
 **EXP:** CONTINUOUS ASSESSMENT 10
 
-**DATE:** 05/10/2026 (Tasks 10C/10d: 12/10/2026)
+**DATE:** 05/10/2026
 
-**NAME OF EXP:** STM32–Wemos Wi-Fi Modem Interface Using AT Commands + HTTP Server
+**NAME OF EXP:** STM32–Wemos Wi-Fi Modem Interface Using AT Commands
 
 **HARDWARE SETUP / PLATFORM:** Blue Pill STM32F103C8T6 (Cortex-M3, 72 MHz) + Wemos D1 mini (ESP8266 AT firmware) + USB-to-TTL — STM32CubeMX + Keil MDK-ARM (STM32CubeIDE project also included), STM32 HAL, PuTTY
 
@@ -28,8 +28,6 @@ Both UARTs 115200-8-N-1. Wi-Fi credentials go in `Core/Inc/wifi_secrets.h` (git-
 ![Circuit Diagram](circuit.png)
 
 *Drawn on [Wokwi](https://wokwi.com). To open and edit it: start a new project on wokwi.com, paste [`wokwi/diagram.json`](wokwi/diagram.json) into its diagram.json tab, and add the `wokwi/*.chip.json` files (if any) with **New file**. The AT89S52, USB-TTL, ULN2003, USBasp and ST-LINK boards are custom chips (pin names added as labels). The ESP-01 part stands in for the Wemos D1 mini and the BMP180 module for the BME280 (same AT firmware / same 4-pin I²C header); the Nucleo-64 graphic is labelled as the F401RE.*
-
-![Data flow](dataflow.svg)
 
 ### 2. Core Logic / Pseudocode / Code Base
 

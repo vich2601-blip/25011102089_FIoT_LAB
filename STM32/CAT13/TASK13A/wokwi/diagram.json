@@ -51,7 +51,7 @@
       "top": -70,
       "left": -260,
       "attrs": {
-        "text": "CAT 13 - BME280 (I2C) + ESP8266 MQTT"
+        "text": "CAT 12 - BME280 (I2C) + ESP8266 HTTP JSON server"
       }
     },
     {
@@ -88,15 +88,6 @@
       "left": -270,
       "attrs": {
         "text": "PA9 TX1 (D8) -> ESP RX\nPA10 RX1 (D2) <- ESP TX\nPC6 TX6 -> USB-TTL RX\nPC7 RX6 (D9) <- USB-TTL TX\nPB6 SCL (D10), PB7 SDA (CN7-21)\n3V3 -> BME280 VCC, all GND common"
-      }
-    },
-    {
-      "type": "wokwi-text",
-      "id": "txt5",
-      "top": -40,
-      "left": 150,
-      "attrs": {
-        "text": "LD2 = PA5 (CAT13B MQTT-controlled LED)"
       }
     },
     {
