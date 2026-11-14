@@ -80,6 +80,18 @@ loop every 1 s:
 | Comparison | Temperature difference, humidity difference, verdict (storage warmer / cooler, more / less humid) | *Compare* function |
 | — | Alarm pop-up notification when `alarm` changes 0 → 1 | *Alarm turned on?* function |
 
+**Node-RED dashboard (`/dashboard/storage`):**
+
+> **Note:** these two screenshots were taken with the real flow above running in Node-RED, but the storage readings come from a **simulated STM32**: an inject + function node that sends the same JSON as `main.c` (`{"temp":..,"hum":..,"press":..,"alarm":..}`) once per second, applying the same alarm rule (T > 35.00 °C or RH > 70.00 %). No board was connected. The Chennai values are live OpenWeatherMap data.
+
+*Normal state: storage readings within limits, Status "Normal", inside vs outside comparison.*
+
+![Node-RED dashboard - normal](dashboard_normal.png)
+
+*Alarm state: simulated heating pushes the temperature above 35 °C, Status changes to "ALARM - check storage!", the gauges turn red and the verdict asks for better ventilation.*
+
+![Node-RED dashboard - alarm](dashboard_alarm.png)
+
 **Expected Output:**
 
 Debug terminal (USART6, 115200):
